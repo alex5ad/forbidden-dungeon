@@ -57,8 +57,9 @@ func _camera_y(y: float) -> float:
 func _travel() -> void:
 	var dist := absi(_to - _from)
 	var bounce_back := _from <= GameState.DEEPEST_FLOOR and _to == 0
-	var dur := clampf(0.7 + dist * 0.09, 0.9, 2.2)
-	await get_tree().create_timer(0.35).timeout
+	var quick := dist == 1 and _to < 0   # etaj după etaj: drum scurt
+	var dur := 0.55 if quick else clampf(0.7 + dist * 0.09, 0.9, 2.2)
+	await get_tree().create_timer(0.15 if quick else 0.35).timeout
 	icon.play("run")
 	king_icon.play("run")
 	trail.emitting = true
@@ -79,9 +80,11 @@ func _travel() -> void:
 	GameState.play_sfx("bounce", false)
 	FX.burst(self, icon.position, GameState.COL_GOLD, 24, 180.0, 0.5, 3.0)
 	floor_label.text = GameState.floor_title(_to)
-	if not bounce_back:
+	if GameState.is_chapter_start(_to):
+		_show_banner("CAPITOLUL %d" % GameState.chapter_number(_to))
+	elif not bounce_back:
 		_show_banner(GameState.floor_short(_to))
-	await get_tree().create_timer(1.1).timeout
+	await get_tree().create_timer(0.6 if quick and not GameState.is_chapter_start(_to) else 1.1).timeout
 	_done = true
 	GameState.arrive()
 

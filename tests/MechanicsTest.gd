@@ -37,6 +37,16 @@ func _new_player() -> void:
 	await _frames(2)
 
 
+func _boss(index: int, pos: Vector2) -> Enemy:
+	var b := ENEMY_SCENE.instantiate() as Enemy
+	b.is_boss = true
+	b.boss_index = index
+	b.position = pos
+	add_child(b)
+	b._timer = 999.0  # fără atacuri obișnuite în test
+	return b
+
+
 func _spawn(offset: Vector2, kind: Projectile.Kind, spd: float, unparryable := false) -> Projectile:
 	var p := PROJ_SCENE.instantiate() as Projectile
 	p.setup(kind, -offset, spd, unparryable)
@@ -169,6 +179,78 @@ func _run() -> void:
 	_check(GameState.zone_index(-9) == 0 and GameState.zone_index(-11) == 1 and GameState.zone_index(-49) == 4, "zone_index")
 	GameState.floor_step = 1
 	_check(GameState.next_floor_down(-7) == -8, "floor_step 1 -> etaj cu etaj")
+
+
+	print("[9] 50 de etaje: capitole, număr de inamici, ritm")
+	GameState.floor_step = 1
+	_check(GameState.chapter_number(-12) == 2 and GameState.chapter_floor(-12) == 2, "capitolul 2, etajul 2/10")
+	_check(GameState.is_chapter_start(-21) and not GameState.is_chapter_start(-22), "începutul capitolului 3")
+	var counts: Array[int] = []
+	for d in range(1, 10):
+		counts.append(GameState.enemy_count_for_floor(-d))
+	_check(counts == [1, 1, 1, 2, 2, 2, 3, 3, 3], "capitolul 1: %s" % str(counts))
+	_check(GameState.enemy_count_for_floor(-49) == 5, "abisul: 5 inamici la -49")
+	_check(GameState.floor_difficulty(-31) == 1.0 and GameState.floor_difficulty(-39) > 1.25, "ritmul crește în capitol")
+	_check(GameState.enemy_types_for_floor(-35) == [3], "Cazarma: Cavaleri Fantomă")
+
+	print("[10] Boss 4: șarjă cu damage la contact, evitată prin salt")
+	await _new_player()
+	var b4 := _boss(4, Vector2(576, 250))
+	await _frames(2)
+	b4._start_charge()
+	await get_tree().create_timer(0.6).timeout
+	_check(GameState.player_hp == 2, "șarja lovește (HP %d)" % GameState.player_hp)
+	b4.queue_free()
+	await _new_player()
+	b4 = _boss(4, Vector2(576, 250))
+	await _frames(2)
+	player.jump()
+	b4._start_charge()
+	await get_tree().create_timer(0.6).timeout
+	_check(GameState.player_hp == 3, "saltul evită șarja (HP %d)" % GameState.player_hp)
+	b4.queue_free()
+
+	print("[11] Boss 1: teleport; faza 2 cheamă ajutoare; ajutoarele dispar")
+	await _new_player()
+	var b1 := _boss(1, Vector2(576, 200))
+	await _frames(2)
+	var before := b1.global_position
+	b1._blink()
+	await get_tree().create_timer(0.6).timeout
+	_check(b1.global_position.distance_to(before) > 1.0, "s-a teleportat")
+	var summons: Array[int] = []
+	b1.summon_requested.connect(func(t: int, _at: Vector2): summons.append(t))
+	for i in 5:
+		b1.take_hit(1)
+	await _frames(2)
+	_check(b1._phase == 2, "faza 2 la jumătate de HP")
+	_check(summons == [0, 0], "a chemat 2 fantome (%s)" % str(summons))
+	var minion := ENEMY_SCENE.instantiate() as Enemy
+	minion.is_minion = true
+	minion.position = Vector2(300, 200)
+	add_child(minion)
+	await _frames(1)
+	_check(minion.is_in_group("minions"), "ajutorul e în grupul minions")
+	var kills_before := GameState.kills
+	minion.dissolve()
+	_check(minion.is_dead() and GameState.kills == kills_before, "dissolve() fără kill")
+	b1.queue_free()
+
+	print("[12] Fantoma Regelui: sfaturi unice și prioritate")
+	var guide := GhostGuide.new()
+	guide.target = player
+	add_child(guide)
+	await _frames(1)
+	GameState.seen_tips.clear()
+	guide.tip_once("first_hit")
+	guide.tip_once("first_hit")
+	_check(GameState.seen_tips.count("first_hit") == 1, "sfatul unic e spus o singură dată")
+	_check(guide._bubble.visible and guide._text.text.begins_with("Au!"), "balonul arată sfatul")
+	guide.say("normal", 1)
+	guide.say("urgent", 5)
+	_check(guide._text.text == "urgent", "prioritatea mare întrerupe")
+	_check(guide._queue.size() == 1, "sfatul normal așteaptă la rând")
+	guide.queue_free()
 
 	await get_tree().create_timer(0.3, true, false, true).timeout
 	_check(Engine.time_scale == 1.0, "time_scale revine la 1.0 după hitstop (%.2f)" % Engine.time_scale)

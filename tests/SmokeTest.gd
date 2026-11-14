@@ -20,6 +20,8 @@ const SHOTS := [
 	["MirrorRoom", 0, 4.0, "03_mirror_king"],
 	["CastleMap", -1, 1.0, "04_map"],
 	["DungeonFloor", -1, 2.2, "05_floor_1"],
+	["DungeonFloor", -11, 1.2, "05b_chapter2"],
+	["DungeonFloor", -27, 2.3, "05c_skeletons"],
 	["DungeonFloor", -10, 2.4, "06_boss1"],
 	["DungeonFloor", -15, 2.3, "07_spirits"],
 	["DungeonFloor", -20, 2.4, "08_boss2"],
@@ -33,10 +35,12 @@ const SHOTS := [
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	GameState.floor_step = 5
+	GameState.floor_step = 1
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shots="):
 			_shots_dir = a.substr(8)
+		elif a.begins_with("--step="):
+			GameState.floor_step = int(a.substr(7))
 	(func():
 		# rămânem copil al root-ului (ca un autoload), iar jocul pornește ca scenă curentă
 		get_tree().current_scene = null
@@ -48,7 +52,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	if Engine.time_scale == 1.0:
 		Engine.time_scale = 2.5
-	if _t > 400.0:
+	if _t > 1600.0:
 		print("SMOKE FAIL: timeout. visited=", _visited, " floors=", _floors)
 		get_tree().quit(1)
 		return
