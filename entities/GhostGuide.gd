@@ -219,7 +219,7 @@ func _build_bubble() -> void:
 	vb.add_theme_constant_override("separation", 2)
 	_bubble.add_child(vb)
 	var who := Label.new()
-		who.text = "The King (Ghost)"
+	who.text = "The King (Ghost)"
 	who.add_theme_font_size_override("font_size", 13)
 	who.add_theme_color_override("font_color", COL_GHOST)
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
