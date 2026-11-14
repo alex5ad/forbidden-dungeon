@@ -1,15 +1,17 @@
 # FORBIDDEN REDEMPTION
 
 Joc 2D pixel-art top-down pentru Game Jam-ul **„BOUNCE BACK”** (Godot 4.7, renderer Compatibility, export Web / itch.io).
-Cavalerul **nu are atac**: singura armă este **parry-ul**, care întoarce loviturile umbrelor spre cursor.
+Cavalerul atacă umbrele cu sabia și le întoarce proiectilele cu scutul. Saltul oferă o fereastră scurtă de invulnerabilitate.
 Povestea completă și succesiunea etajelor: [docs/STORY_AND_GDD.md](docs/STORY_AND_GDD.md).
 
 ## Controale
 
 | Tastă | Acțiune |
 |---|---|
-| WASD / Săgeți | mișcare (`SPEED = 220`) |
-| Click stânga / Space | **PARRY** (lovitura reflectată pleacă spre cursor) |
+| WASD | mișcare (`SPEED = 220`) |
+| P | atac cu sabia în direcția cursorului |
+| L / Click stânga | **Scut / parry** (lovitura reflectată pleacă spre cursor) |
+| Space | salt eschivant (invulnerabilitate scurtă, cooldown 0.8 s) |
 | R | reîncearcă etajul după moarte |
 | Click / Space / Enter | avansează dialogul, grăbește harta |
 

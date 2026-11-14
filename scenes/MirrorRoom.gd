@@ -72,7 +72,7 @@ func _first_visit_sequence() -> void:
 	var entered_name: String = await _ask_name()
 	GameState.player_name = entered_name
 	await dialog.say("Regele (din oglindă)", KING_SPEECH % GameState.player_name, COL_KING_GHOST)
-	await dialog.say("Regele (din oglindă)", "Nu ai nevoie de sabie. Ridică-ți scutul exact când lovitura te atinge (Click / Space) și ea se va întoarce spre cursorul tău!", COL_KING_GHOST)
+	await dialog.say("Regele (din oglindă)", "Atacă umbrele cu P, ridică scutul cu L chiar când te lovește un proiectil ca să-l întorci spre cursor și folosește Space ca să sari peste lovituri!", COL_KING_GHOST)
 	# se deschide trapa către Subsolul -1
 	trapdoor.caption = "SUBSOLUL -1"
 	await trapdoor.open_door(0.9).finished
