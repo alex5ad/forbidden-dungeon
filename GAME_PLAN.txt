@@ -17,7 +17,7 @@ cursor, ca să omori arcașii cu propriile lor săgeți.
 Pe temă, în două feluri:
   - literal: săgețile ricoșează (de zid, înapoi spre inamici)
   - figurat: revii din marginea morții (un perfect parry la
-    1 viață îți dă o viață înapoi)
+	1 viață îți dă o viață înapoi)
 
 Pitch în 5 secunde: "Arcașii trag în tine. Întoarce-le
 săgețile și răzbună-te."
@@ -27,22 +27,22 @@ săgețile și răzbună-te."
 ----------------------------------------------------------
 - Mișcare: WASD / săgeți, viteză ~220
 - Parry (tasta/click): fereastră ~0.15 s
-    * Perfect parry: primele ~0.05 s
-      -> săgeata merge mai repede (x1.8), STRÂPUNGE,
-         poate omorî mai mulți arcași, hitstop mai mare
-    * Parry normal: săgeata x1.2, dispare după ce lovește
-    * Parry ratat: cooldown ~0.5 s (ești vulnerabil)
+	* Perfect parry: primele ~0.05 s
+	  -> săgeata merge mai repede (x1.8), STRÂPUNGE,
+		 poate omorî mai mulți arcași, hitstop mai mare
+	* Parry normal: săgeata x1.2, dispare după ce lovește
+	* Parry ratat: cooldown ~0.5 s (ești vulnerabil)
 - Săgeata reflectată merge spre CURSOR (țintești tu)
 - Ricoșeu: săgeata reflectată sare o dată de zid (bank shots)
 - Vieți: 3. La 1 viață, un perfect parry îți redă una.
 - Arcași:
-    * telegraph clar (se înroșește / linie spre tine) ~0.6 s
-    * ritm de tragere random 1.5-3 s
+	* telegraph clar (se înroșește / linie spre tine) ~0.6 s
+	* ritm de tragere random 1.5-3 s
 - Tipuri de inamici (în ordinea în care le adaugi):
-    1. arcaș simplu
-    2. arcaș cu evantai de 3 săgeți
-    3. arcaș cu săgeată în flăcări (mai lentă)
-    4. arcaș cu săgeată NEREFLECTABILE (trebuie să te feri)
+	1. arcaș simplu
+	2. arcaș cu evantai de 3 săgeți
+	3. arcaș cu săgeată în flăcări (mai lentă)
+	4. arcaș cu săgeată NEREFLECTABILE (trebuie să te feri)
 - Valuri: 1 arcaș -> 2 -> 3 + tipuri noi. Scor = valuri
   supraviețuite / arcași omorâți / combo de parry-uri.
 
@@ -104,10 +104,10 @@ Grafică (pixel art 16x16, stil unitar):
 Sunete:
   - Kenney "RPG Audio" + "Impact Sounds" (CC0)
   - jsfxr (sfxr.me) / ChipTone: fâșâit săgeată, încordat arc,
-    moarte arcaș, perfect parry
+	moarte arcaș, perfect parry
 Muzică:
   - itch.io tag "music" + "medieval" + "free", OpenGameArt,
-    Kevin MacLeod (incompetech, CC-BY -> credit)
+	Kevin MacLeod (incompetech, CC-BY -> credit)
 Fonturi (OFL): MedievalSharp, Pirata One (titlu);
   Press Start 2P / Kenney Fonts (UI)
 
@@ -137,7 +137,7 @@ Fonturi (OFL): MedievalSharp, Pirata One (titlu);
   [ ] itch.io: New project > Kind of project: HTML
   [ ] Upload zip + bifați "This file will be played in the browser"
   [ ] Dacă folosiți threads: bifați "SharedArrayBuffer support"
-      (exportul single-threaded din 4.3+ nu are nevoie)
+	  (exportul single-threaded din 4.3+ nu are nevoie)
   [ ] Setați dimensiunea viewport-ului (ex. 1152x648)
   [ ] Testați de pe pagina itch.io, în browser, cu sunet
   [ ] Pagina publică / trimisă la jam înainte de deadline
