@@ -56,7 +56,8 @@ func _build() -> void:
 	_coins_label = UiKit.label("0", 26, GameState.COL_GOLD, 6)
 	header.add_child(_coins_label)
 
-	var sub := UiKit.label("Earn coins by clearing floors. Shields hold longer; armors only change your look.",
+	var sub := UiKit.label("Floors pay 10 × chapter, bosses 100 × chapter, +2 per PERFECT, +50% if you take no hit. "
+			+ "Shields hold longer; armors only change your look.",
 			15, Color(GameState.COL_TEXT, 0.8), 3)
 	root.add_child(sub)
 

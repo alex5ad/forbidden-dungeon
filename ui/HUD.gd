@@ -48,6 +48,8 @@ func set_floor(floor_num: int) -> void:
 				chapter, GameState.floor_name(floor_num), GameState.chapter_floor(floor_num)]
 	else:
 		_zone_label.text = GameState.floor_name(floor_num)
+	if GameState.replay_mode:
+		_zone_label.text = "REPLAY  ·  " + _zone_label.text
 
 
 func show_boss_bar(boss_name: String, max_hp: int) -> void:
@@ -267,7 +269,7 @@ func _build() -> void:
 	vb.add_child(btn)
 	var home := IconButton.make("HOME", "home", GameState.COL_MAGENTA, 16)
 	home.custom_minimum_size = Vector2(0, 40)
-	home.pressed.connect(func(): GameState.go_home())
+	home.pressed.connect(func(): GameState.go_home(GameState.replay_mode))
 	vb.add_child(home)
 
 

@@ -264,11 +264,11 @@ func _run() -> void:
 	GameState.owned_items.assign(GameState.DEFAULT_ITEMS)
 	GameState.equipped_shield = "shield_wood"
 	GameState.equipped_armor = "armor_classic"
-	_check(GameState.floor_reward(-3) == 5 and GameState.floor_reward(-23) == 9, "recompensă etaj (cap. 1: 5, cap. 3: 9)")
-	_check(GameState.floor_reward(-10) == 25 and GameState.floor_reward(-50) == 65, "recompensă boss (25 / 65)")
+	_check(GameState.floor_reward(-3) == 10 and GameState.floor_reward(-23) == 30, "recompensă etaj (cap. 1: 10, cap. 3: 30)")
+	_check(GameState.floor_reward(-10) == 100 and GameState.floor_reward(-50) == 500, "recompensă boss (100 / 500)")
 	_check(not GameState.buy("shield_iron"), "fără bani nu cumperi")
-	GameState.add_coins(130)
-	_check(GameState.buy("shield_iron") and GameState.coins == 10, "cumpără Iron Shield (rămân 10)")
+	GameState.add_coins(160)
+	_check(GameState.buy("shield_iron") and GameState.coins == 10, "cumpără Iron Shield cu 150 (rămân 10)")
 	_check(GameState.equipped_shield == "shield_iron", "scutul cumpărat e echipat")
 	_check(not GameState.buy("shield_iron"), "nu îl cumperi de două ori")
 	await _new_player()
@@ -277,11 +277,30 @@ func _run() -> void:
 	await get_tree().create_timer(0.16).timeout
 	_check(player.parry_active, "scutul ține încă ridicat la 0.16s")
 	GameState.equip("shield_wood")
-	GameState.add_coins(250)
+	GameState.add_coins(800)
 	_check(GameState.buy("armor_valkyrie"), "cumpără Valkyrie Armor")
 	await _new_player()
 	_check(is_equal_approx(player.parry_window, 0.15), "armura nu schimbă lupta")
 	_check(player.sprite.sprite_frames == SpriteLib.frames("knight_f"), "armura schimbă aspectul")
+
+	print("[13b] Economia: o tură completă cumpără aproape tot magazinul")
+	var run_total := 0
+	for d in range(1, 51):
+		run_total += int(GameState.clear_reward(-d, 2, d % 3 == 0, false)["total"])
+	run_total += GameState.COINS_TREASURE
+	var shop_total := 0
+	for it in GameState.SHIELDS + GameState.ARMORS:
+		shop_total += int(it["price"])
+	_check(run_total >= 3400 and run_total < shop_total + 600, "o tură ≈ %d monede, magazinul = %d" % [run_total, shop_total])
+	var ch1 := 0
+	for d in range(1, 11):
+		ch1 += int(GameState.clear_reward(-d, 0, false, false)["total"])
+	_check(ch1 >= int(GameState.item_data("shield_iron")["price"]), "după capitolul 1 (%d) îți iei Iron Shield" % ch1)
+	var r := GameState.clear_reward(-12, 3, true, false)
+	_check(int(r["base"]) == 20 and int(r["perfect"]) == 6 and int(r["flawless"]) == 10 and int(r["total"]) == 36,
+			"recompensă -12: 20 + 6 PERFECT + 10 fără lovituri = 36")
+	_check(int(GameState.clear_reward(-12, 3, true, true)["total"]) == 18, "rejucarea unui etaj terminat: jumătate")
+	_check(int(GameState.clear_reward(-5, 50, false, false)["perfect"]) == GameState.COINS_PERFECT_CAP, "bonusul PERFECT are plafon")
 
 	print("[14] Salvare și continuare")
 	GameState.save_path = "user://mechanics_test.save"
@@ -306,6 +325,39 @@ func _run() -> void:
 	_check(GameState.continue_scene() == GameState.SCENE_MIRROR, "Continue -> Oglinda (vizita 2)")
 	GameState.mirror_visit = 1
 	GameState.tips_enabled = true
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
+
+	print("[14b] Nivele: deblocare și rejucare fără să atingi tura salvată")
+	GameState.deepest_reached = 1
+	GameState.cleared_floors.clear()
+	_check(GameState.is_unlocked(-1) and not GameState.is_unlocked(-2), "la început doar -1 e deblocat")
+	GameState.checkpoint(-6)
+	_check(GameState.deepest_reached == 6 and GameState.is_unlocked(-5) and not GameState.is_unlocked(-7),
+			"ajuns la -6: se deblochează -1 … -6")
+	GameState.run_active = true
+	GameState.resume_floor = -6
+	GameState.player_hp = 2
+	GameState.kills = 5
+	# ce face start_replay(), fără schimbarea scenei
+	GameState._replay_snapshot = GameState._run_dict()
+	GameState.replay_mode = true
+	GameState.player_hp = 3
+	GameState.kills = 99
+	GameState.current_floor = -3
+	GameState.checkpoint(-3)
+	_check(GameState.resume_floor == -6, "rejucarea nu mută checkpoint-ul turei")
+	GameState.add_coins(40)
+	GameState.mark_cleared(-3)
+	GameState.save_game()
+	GameState.load_game()
+	_check(GameState.resume_floor == -6 and GameState.player_hp == 2 and GameState.kills == 5,
+			"în timpul rejucării se salvează tura păstrată")
+	GameState._replay_snapshot = GameState._run_dict()
+	GameState.replay_mode = true
+	GameState.kills = 77
+	GameState.end_replay()
+	_check(not GameState.replay_mode and GameState.kills == 5 and GameState.player_hp == 2, "după rejucare tura revine")
+	_check(GameState.is_cleared(-3) and GameState.coins >= 40, "monedele și etajul terminat rămân")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
 
 	print("[15] Cartea: titlul încape pe copertă și se scrijelește")

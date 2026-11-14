@@ -57,30 +57,44 @@ const ZONES: Array[Dictionary] = [
 const SHIELDS: Array[Dictionary] = [
 	{"id": "shield_wood", "name": "Wooden Shield", "price": 0, "window": 0.15, "perfect": 0.05,
 		"cooldown": 0.5, "color": Color("#ffe600"), "desc": "Parry 0.15s · cooldown 0.5s"},
-	{"id": "shield_iron", "name": "Iron Shield", "price": 120, "window": 0.18, "perfect": 0.055,
+	{"id": "shield_iron", "name": "Iron Shield", "price": 150, "window": 0.18, "perfect": 0.055,
 		"cooldown": 0.4, "color": Color("#c8d6e5"), "desc": "Parry 0.18s · cooldown 0.4s"},
-	{"id": "shield_gold", "name": "Golden Shield", "price": 300, "window": 0.21, "perfect": 0.06,
+	{"id": "shield_gold", "name": "Golden Shield", "price": 600, "window": 0.21, "perfect": 0.06,
 		"cooldown": 0.32, "color": Color("#ffb300"), "desc": "Parry 0.21s · cooldown 0.32s · wider PERFECT"},
-	{"id": "shield_royal", "name": "King's Shield", "price": 600, "window": 0.25, "perfect": 0.07,
+	{"id": "shield_royal", "name": "King's Shield", "price": 1500, "window": 0.25, "perfect": 0.07,
 		"cooldown": 0.25, "color": Color("#7ff3ff"), "desc": "Parry 0.25s · cooldown 0.25s · widest PERFECT"},
 ]
 ## Armurile sunt doar cosmetice (nu schimbă nimic în luptă).
 const ARMORS: Array[Dictionary] = [
 	{"id": "armor_classic", "name": "Classic Armor", "price": 0, "look": "knight", "tint": Color(1, 1, 1),
 		"desc": "The armor you arrived in."},
-	{"id": "armor_gold", "name": "Golden Armor", "price": 80, "look": "knight", "tint": Color(1.0, 0.85, 0.35),
+	{"id": "armor_gold", "name": "Golden Armor", "price": 200, "look": "knight", "tint": Color(1.0, 0.85, 0.35),
 		"desc": "Shines like the Royal Treasure."},
-	{"id": "armor_shadow", "name": "Shadow Armor", "price": 80, "look": "knight", "tint": Color(0.6, 0.5, 0.9),
+	{"id": "armor_shadow", "name": "Shadow Armor", "price": 200, "look": "knight", "tint": Color(0.6, 0.5, 0.9),
 		"desc": "Forged from a defeated shadow."},
-	{"id": "armor_frost", "name": "Frost Armor", "price": 150, "look": "knight", "tint": Color(0.6, 0.95, 1.0),
+	{"id": "armor_frost", "name": "Frost Armor", "price": 350, "look": "knight", "tint": Color(0.6, 0.95, 1.0),
 		"desc": "Cold as the crypt's breath."},
-	{"id": "armor_neon", "name": "Neon Armor", "price": 150, "look": "knight", "tint": Color(1.0, 0.45, 1.0),
+	{"id": "armor_neon", "name": "Neon Armor", "price": 350, "look": "knight", "tint": Color(1.0, 0.45, 1.0),
 		"desc": "Glows like the magenta beam."},
-	{"id": "armor_valkyrie", "name": "Valkyrie Armor", "price": 250, "look": "knight_f", "tint": Color(1, 1, 1),
+	{"id": "armor_valkyrie", "name": "Valkyrie Armor", "price": 800, "look": "knight_f", "tint": Color(1, 1, 1),
 		"desc": "A whole new look, with a red ponytail."},
 ]
 const DEFAULT_ITEMS: Array[String] = ["shield_wood", "armor_classic"]
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
+
+# --- Economia monedelor --------------------------------------------------------
+## Un etaj curățat plătește 10 × capitol (10 … 50), un boss 100 × capitol (100 … 500).
+## Bonusuri: +2 pentru fiecare PERFECT (max. +20), +50% dacă nu ai fost lovit deloc.
+## Comoara de la -50: 500. O tură completă aduce ~3 400 – 4 000 de monede;
+## tot magazinul costă 4 150, deci o tură + câteva rejucări cumpără tot.
+## Rejucarea unui etaj deja terminat plătește jumătate (prima terminare plătește tot).
+const COINS_FLOOR := 10
+const COINS_BOSS := 100
+const COINS_PER_PERFECT := 2
+const COINS_PERFECT_CAP := 20
+const FLAWLESS_BONUS := 0.5
+const COINS_TREASURE := 500
+const REPLAY_REPEAT_FACTOR := 0.5
 
 ## 1 = toate cele 50 de subsoluri pe rând (-1, -2, -3 ... -50).
 ## 5 = „Puțuri Abisale” pentru o sesiune scurtă (-1, -5, -10 ... -50).
@@ -103,6 +117,15 @@ var owned_items: Array[String] = ["shield_wood", "armor_classic"]
 var equipped_shield: String = "shield_wood"
 var equipped_armor: String = "armor_classic"
 var tips_enabled: bool = true
+var deepest_reached: int = 1          # cel mai adânc subsol atins (1 … 50): deblochează nivelele
+var cleared_floors: Array[int] = []   # subsolurile terminate măcar o dată (adâncimi pozitive)
+
+# --- Rejucarea unui nivel (meniul LEVELS) ------------------------------------
+## În modul replay se joacă un singur etaj; tura salvată rămâne neatinsă.
+var replay_mode: bool = false
+var replay_floor: int = 0
+var open_levels_on_menu: bool = false
+var _replay_snapshot: Dictionary = {}
 
 # --- Salvare -------------------------------------------------------------------
 ## Fișierul de salvare (pe Web: IndexedDB-ul browserului). Testele folosesc alt fișier.
@@ -116,6 +139,7 @@ var parries: int = 0
 var perfect_parries: int = 0
 var bounce_backs: int = 0
 var deaths: int = 0
+var run_coins: int = 0
 var run_start_msec: int = 0
 
 # --- Intern -------------------------------------------------------------------
@@ -336,6 +360,10 @@ func continue_run() -> void:
 
 func checkpoint(floor_num: int) -> void:
 	## Salvează tura: „Continue” va porni de la începutul acestui etaj.
+	mark_reached(floor_num)
+	if replay_mode:
+		save_game()   # în rejucare se salvează doar monedele / deblocările
+		return
 	run_active = true
 	resume_floor = floor_num
 	save_game()
@@ -347,24 +375,86 @@ func finish_run() -> void:
 	save_game()
 
 
-func go_home() -> void:
+func go_home(open_levels: bool = false) -> void:
+	## Ecranul de acasă (din pauză, Game Over, final sau după o rejucare).
+	open_levels_on_menu = open_levels
+	end_replay()
 	get_tree().paused = false
 	change_scene(SCENE_MENU)
+
+
+# =============================================================================
+#  Nivele: deblocare + rejucare
+# =============================================================================
+func mark_reached(floor_num: int) -> void:
+	if floor_num < 0:
+		deepest_reached = clampi(maxi(deepest_reached, absi(floor_num)), 1, absi(DEEPEST_FLOOR))
+
+
+func mark_cleared(floor_num: int) -> void:
+	if floor_num < 0 and not cleared_floors.has(absi(floor_num)):
+		cleared_floors.append(absi(floor_num))
+
+
+func is_unlocked(floor_num: int) -> bool:
+	return floor_num < 0 and absi(floor_num) <= deepest_reached
+
+
+func is_cleared(floor_num: int) -> bool:
+	return cleared_floors.has(absi(floor_num))
+
+
+func start_replay(floor_num: int) -> void:
+	## Rejoacă un subsol deja atins. Tura salvată se păstrează și revine după.
+	if not is_unlocked(floor_num) or is_transitioning():
+		return
+	if not replay_mode:
+		_replay_snapshot = _run_dict()
+	replay_mode = true
+	replay_floor = floor_num
+	current_floor = floor_num
+	target_floor = floor_num
+	player_hp = max_hp
+	hp_changed.emit(player_hp, max_hp)
+	change_scene(SCENE_DUNGEON)
+
+
+func end_replay() -> void:
+	if not replay_mode:
+		return
+	replay_mode = false
+	replay_floor = 0
+	_apply_run(_replay_snapshot)
+	_replay_snapshot = {}
+	save_game()
 
 
 # =============================================================================
 #  Monede și magazin
 # =============================================================================
 func floor_reward(floor_num: int) -> int:
-	## Monede pentru o cameră curățată: cresc cu fiecare capitol; boșii dau mult mai mult.
+	## Recompensa de bază: 10 × capitol pentru un etaj, 100 × capitol pentru un boss.
 	var chapter := maxi(chapter_number(floor_num), 1)
 	if is_boss_floor(floor_num):
-		return 25 + 10 * (chapter - 1)
-	return 5 + 2 * (chapter - 1)
+		return COINS_BOSS * chapter
+	return COINS_FLOOR * chapter
+
+
+func clear_reward(floor_num: int, perfects: int, flawless: bool, repeat: bool) -> Dictionary:
+	## Toată recompensa pentru o cameră curățată (bază + PERFECT + fără lovituri),
+	## înjumătățită când rejoci un etaj deja terminat.
+	var base := floor_reward(floor_num)
+	var perfect_bonus := mini(maxi(perfects, 0) * COINS_PER_PERFECT, COINS_PERFECT_CAP)
+	var flawless_bonus := roundi(base * FLAWLESS_BONUS) if flawless else 0
+	var total := base + perfect_bonus + flawless_bonus
+	if repeat:
+		total = ceili(total * REPLAY_REPEAT_FACTOR)
+	return {"base": base, "perfect": perfect_bonus, "flawless": flawless_bonus, "total": total, "repeat": repeat}
 
 
 func add_coins(amount: int) -> void:
 	coins = maxi(coins + amount, 0)
+	run_coins += maxi(amount, 0)
 	coins_changed.emit(coins)
 
 
@@ -434,18 +524,9 @@ func set_tips_enabled(enabled: bool) -> void:
 func save_game() -> void:
 	var data := {
 		"version": SAVE_VERSION,
-		"meta": {
-			"coins": coins, "owned": owned_items, "shield": equipped_shield,
-			"armor": equipped_armor, "tips": tips_enabled,
-		},
-		"run": {
-			"active": run_active, "name": player_name, "floor": resume_floor, "hp": player_hp,
-			"mirror_visit": mirror_visit, "potion": has_potion, "crown": has_crown,
-			"floor_step": floor_step, "seen_tips": seen_tips,
-			"kills": kills, "parries": parries, "perfect": perfect_parries,
-			"bounce_backs": bounce_backs, "deaths": deaths,
-			"time_ms": Time.get_ticks_msec() - run_start_msec,
-		},
+		"meta": _meta_dict(),
+		# în timpul unei rejucări se salvează tura păstrată, nu etajul rejucat
+		"run": _replay_snapshot if replay_mode else _run_dict(),
 	}
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f == null:
@@ -466,7 +547,22 @@ func load_game() -> bool:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return false
 	var d: Dictionary = parsed
-	var meta: Dictionary = d.get("meta", {})
+	_apply_meta(d.get("meta", {}))
+	_apply_run(d.get("run", {}))
+	# salvări vechi (fără „deepest”): deblochează cel puțin etajul din tura salvată
+	mark_reached(resume_floor)
+	return true
+
+
+func _meta_dict() -> Dictionary:
+	return {
+		"coins": coins, "owned": owned_items, "shield": equipped_shield,
+		"armor": equipped_armor, "tips": tips_enabled,
+		"deepest": deepest_reached, "cleared": cleared_floors,
+	}
+
+
+func _apply_meta(meta: Dictionary) -> void:
 	coins = int(meta.get("coins", 0))
 	owned_items.clear()
 	for id: Variant in meta.get("owned", []):
@@ -482,10 +578,31 @@ func load_game() -> bool:
 	if not owns(equipped_armor):
 		equipped_armor = "armor_classic"
 	tips_enabled = bool(meta.get("tips", true))
-	var run: Dictionary = d.get("run", {})
+	deepest_reached = clampi(int(meta.get("deepest", 1)), 1, absi(DEEPEST_FLOOR))
+	cleared_floors.clear()
+	for c: Variant in meta.get("cleared", []):
+		var depth := int(c)
+		if depth >= 1 and depth <= absi(DEEPEST_FLOOR) and not cleared_floors.has(depth):
+			cleared_floors.append(depth)
+
+
+func _run_dict() -> Dictionary:
+	return {
+		"active": run_active, "name": player_name, "floor": resume_floor, "hp": player_hp,
+		"mirror_visit": mirror_visit, "potion": has_potion, "crown": has_crown,
+		"floor_step": floor_step, "seen_tips": seen_tips.duplicate(),
+		"kills": kills, "parries": parries, "perfect": perfect_parries,
+		"bounce_backs": bounce_backs, "deaths": deaths, "coins_earned": run_coins,
+		"current": current_floor, "time_ms": Time.get_ticks_msec() - run_start_msec,
+	}
+
+
+func _apply_run(run: Dictionary) -> void:
 	run_active = bool(run.get("active", false))
 	player_name = String(run.get("name", player_name))
 	resume_floor = clampi(int(run.get("floor", 0)), DEEPEST_FLOOR, TOP_FLOOR)
+	current_floor = clampi(int(run.get("current", resume_floor)), DEEPEST_FLOOR, TOP_FLOOR)
+	target_floor = current_floor
 	player_hp = clampi(int(run.get("hp", max_hp)), 1, max_hp)
 	mirror_visit = int(run.get("mirror_visit", 1))
 	has_potion = bool(run.get("potion", false))
@@ -499,8 +616,9 @@ func load_game() -> bool:
 	perfect_parries = int(run.get("perfect", 0))
 	bounce_backs = int(run.get("bounce_backs", 0))
 	deaths = int(run.get("deaths", 0))
+	run_coins = int(run.get("coins_earned", 0))
 	run_start_msec = Time.get_ticks_msec() - int(run.get("time_ms", 0))
-	return true
+	hp_changed.emit(player_hp, max_hp)
 
 
 func reset_run() -> void:
@@ -516,6 +634,7 @@ func reset_run() -> void:
 	perfect_parries = 0
 	bounce_backs = 0
 	deaths = 0
+	run_coins = 0
 	run_start_msec = Time.get_ticks_msec()
 	hp_changed.emit(player_hp, max_hp)
 

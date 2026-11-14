@@ -2,7 +2,7 @@ class_name IconButton
 extends Button
 ## Buton cu iconiță desenată pixel-art (fără font de simboluri): play, pause, home, shop, coin, tips.
 
-@export_enum("none", "play", "pause", "home", "shop", "tips", "new") var icon_kind := "none":
+@export_enum("none", "play", "pause", "home", "shop", "tips", "new", "levels") var icon_kind := "none":
 	set(v):
 		icon_kind = v
 		queue_redraw()
@@ -52,3 +52,7 @@ func _draw() -> void:
 		"new":
 			draw_rect(Rect2(o + Vector2(h * 0.5 - 2, 0), Vector2(4, h)), col)
 			draw_rect(Rect2(o + Vector2(0, h * 0.5 - 2), Vector2(h, 4)), col)
+		"levels":
+			for gy in 3:
+				for gx in 3:
+					draw_rect(Rect2(o + Vector2(gx * 6.5, gy * 6.5), Vector2(5, 5)), col)

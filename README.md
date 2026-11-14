@@ -54,6 +54,7 @@ Jocul pornește pe **ecranul de acasă** (`scenes/MainMenu.tscn`):
 | Buton | Ce face |
 |---|---|
 | CONTINUE | continuă tura salvată (arată etajul de unde reîncepi) |
+| LEVELS | rejoacă orice subsol deja atins (vezi mai jos) |
 | NEW GAME | tură nouă (cere confirmare dacă există una salvată; monedele și obiectele rămân) |
 | SHOP | Magazinul Regal |
 | KING'S TIPS: ON/OFF | pornește / oprește sfaturile fantomei |
@@ -63,17 +64,35 @@ la începutul fiecărui etaj și imediat ce o cameră e curățată (atunci „C
 următor). În timpul nivelului, **Esc** sau butonul ⏸ deschid pauza: **PLAY** continuă, **HOME** te duce
 acasă; poți închide jocul și reveni oricând.
 
-**Monede**: după fiecare cameră curățată primești `5 + 2 × (capitol − 1)` monede, +1 pentru fiecare
-PERFECT pe etaj (max. 10); boșii dau `25 + 10 × (capitol − 1)`; comoara de la -50 dă încă 100.
+### Nivele (LEVELS)
+
+Meniul arată cele 5 capitole × 10 subsoluri. Orice subsol până la cel mai adânc atins e deblocat
+(ex.: ai ajuns la -6 → poți rejuca -1 … -6). Galben = terminat, magenta = boss, `»` = etajul de unde
+continuă tura salvată. O rejucare e un singur etaj: tura salvată nu se schimbă, iar la final trapa te
+duce înapoi în LEVELS. Monedele câștigate rămân.
+
+### Monede (valori logice)
+
+| Ce | Monede |
+|---|---|
+| Etaj curățat | **10 × capitol** (10, 20, 30, 40, 50) |
+| Boss învins | **100 × capitol** (100, 200, 300, 400, 500) |
+| Fiecare PERFECT pe etaj | +2 (max. +20) |
+| Fără nicio lovitură primită | +50% din baza etajului |
+| Comoara de la -50 | 500 |
+| Rejucarea unui etaj **deja terminat** | jumătate (prima terminare plătește tot) |
+
+Capitolul 1 aduce ~190 de monede (ajunge pentru Iron Shield), o tură completă ~3 400 – 4 000;
+tot magazinul costă 4 150, deci cu o tură plus câteva rejucări cumperi tot.
 
 | Scut (ține mai mult) | Preț | Parry | Cooldown la ratare | PERFECT |
 |---|---|---|---|---|
 | Wooden Shield | 0 | 0.15 s | 0.5 s | 0.05 s |
-| Iron Shield | 120 | 0.18 s | 0.4 s | 0.055 s |
-| Golden Shield | 300 | 0.21 s | 0.32 s | 0.06 s |
-| King's Shield | 600 | 0.25 s | 0.25 s | 0.07 s |
+| Iron Shield | 150 | 0.18 s | 0.4 s | 0.055 s |
+| Golden Shield | 600 | 0.21 s | 0.32 s | 0.06 s |
+| King's Shield | 1500 | 0.25 s | 0.25 s | 0.07 s |
 
-Armurile sunt **doar cosmetice**: Golden și Shadow (80), Frost și Neon (150), Valkyrie (250, alt
+Armurile sunt **doar cosmetice**: Golden și Shadow (200), Frost și Neon (350), Valkyrie (800, alt
 sprite). Armura echipată se vede peste tot: în nivel, în cutscene, pe hartă și pe ecranul de acasă.
 
 ## Fantoma Regelui (ghidul)
@@ -120,6 +139,7 @@ forbidden-dungeon/
 │   ├── HUD.gd                 # inimi, monede, etaj, bara boss-ului, Game Over
 │   ├── PauseMenu.gd           # pauză: PLAY / TIPS / HOME (Esc sau butonul ⏸)
 │   ├── ShopPanel.gd           # Magazinul Regal (scuturi + armuri)
+│   ├── LevelSelect.gd         # meniul LEVELS: rejoacă orice subsol atins
 │   ├── UiKit.gd               # stiluri comune (butoane neon, panouri)
 │   └── IconButton.gd          # butoane cu iconițe desenate (play, pause, home, shop)
 ├── shaders/
@@ -191,7 +211,8 @@ MainMenu (Node2D) [MainMenu.gd]               # _draw(): stele, castelul în dep
     ├── Title (Label) "FORBIDDEN REDEMPTION"  ├── Subtitle (Label)
     ├── Coins (HBoxContainer) └── Icon, Amount
     ├── Controls (Label)
-    ├── *VBox: CONTINUE, NEW GAME, SHOP, KING'S TIPS (IconButton)
+    ├── *VBox: CONTINUE, LEVELS, NEW GAME, SHOP, KING'S TIPS (IconButton)
+    ├── *LevelSelect (PanelContainer) [LevelSelect] # 5 capitole × 10 etaje, rejucare
     └── *ShopPanel (PanelContainer) [ShopPanel] # SHIELDS | ARMORS, BUY / EQUIP / EQUIPPED
 ```
 
@@ -311,7 +332,8 @@ ThroneEnding (Node2D) [ThroneEnding.gd]        # _draw(): peretele cu vitralii
 | `change_scene(path)`, `go_home()` | tranziție cu fade; întoarcere pe ecranul de acasă |
 | `new_run()`, `continue_run()`, `checkpoint(etaj)`, `finish_run()` | ture și salvare automată |
 | `save_game()` / `load_game()` | JSON în `user://forbidden_redemption.save` |
-| `coins`, `add_coins()`, `floor_reward(f)` + semnalul `coins_changed` | monede |
+| `coins`, `add_coins()`, `floor_reward(f)`, `clear_reward(...)` + semnalul `coins_changed` | monede |
+| `deepest_reached`, `cleared_floors`, `is_unlocked(f)`, `start_replay(f)`, `end_replay()` | meniul LEVELS / rejucare |
 | `SHIELDS`, `ARMORS`, `buy(id)`, `equip(id)`, `shield_stats()`, `armor_data()` | magazinul |
 | `tips_enabled`, `set_tips_enabled()` + semnalul `tips_toggled` | sfaturile fantomei (X) |
 

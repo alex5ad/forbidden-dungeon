@@ -73,7 +73,10 @@ func _process(delta: float) -> void:
 	_maybe_shot(sname)
 	match sname:
 		"MainMenu":
-			_drive_menu(scene)
+			if _phase == "story":
+				_drive_menu(scene)
+			else:
+				_drive_levels(scene)
 		"IntroGates", "CastleMap":
 			_press_accept_every(0.4)
 		"MirrorRoom":
@@ -101,10 +104,11 @@ func _process(delta: float) -> void:
 					print("SMOKE FAIL: run_active=", GameState.run_active, " coins=", GameState.coins)
 					get_tree().quit(1)
 					return
-				print("SMOKE OK: coins=", GameState.coins, " visited=", _visited, " floors=", _floors, " kills=", GameState.kills,
-						" parries=", GameState.parries, " deaths=", GameState.deaths, " name=", GameState.player_name)
-				DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
-				get_tree().quit(0)
+				if _phase == "story":
+					print("[smoke] story OK: coins=", GameState.coins, " floors=", _floors.size(), " kills=", GameState.kills,
+							" deaths=", GameState.deaths, " name=", GameState.player_name)
+					_phase = "levels"
+					GameState.go_home(true)
 
 
 func _maybe_shot(sname: String) -> void:
@@ -141,9 +145,14 @@ func _isolate_save() -> void:
 	GameState.equipped_armor = "armor_classic"
 	GameState.tips_enabled = true
 	GameState.run_active = false
+	GameState.deepest_reached = 1
+	GameState.cleared_floors.clear()
+	GameState.replay_mode = false
 
 
 var _menu_step := 0
+var _phase := "story"
+var _coins_before_replay := 0
 
 
 func _drive_menu(scene: Node) -> void:
@@ -167,6 +176,32 @@ func _drive_menu(scene: Node) -> void:
 			if _scene_t > 2.2:
 				_menu_step = 3
 				scene.call("_on_new_game")
+
+
+func _drive_levels(scene: Node) -> void:
+	## După final: meniul LEVELS -> rejoacă -12 -> înapoi în LEVELS.
+	var levels: LevelSelect = scene.get("_levels")
+	if _phase == "levels" and _scene_t > 1.2:
+		if levels == null or not levels.visible:
+			print("SMOKE FAIL: meniul LEVELS nu s-a deschis după final")
+			get_tree().quit(1)
+			return
+		_save_shot("15_levels")
+		_coins_before_replay = GameState.coins
+		_phase = "replay"
+		levels.call("_on_floor_pressed", 12)
+	elif _phase == "replay_done" and _scene_t > 1.2:
+		var ok := levels and levels.visible and not GameState.replay_mode and not GameState.run_active \
+				and GameState.coins > _coins_before_replay and GameState.is_cleared(-12)
+		if not ok:
+			print("SMOKE FAIL: după rejucare coins=", GameState.coins, " înainte=", _coins_before_replay,
+					" replay=", GameState.replay_mode, " run_active=", GameState.run_active)
+			get_tree().quit(1)
+			return
+		print("SMOKE OK: coins=", GameState.coins, " (+", GameState.coins - _coins_before_replay, " din rejucarea -12)",
+				" visited=", _visited.size(), " scene, floors=", _floors.size())
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
+		get_tree().quit(0)
 
 
 func _save_shot(key: String) -> void:
@@ -224,6 +259,11 @@ func _drive_dungeon(scene: Node) -> void:
 			get_tree().quit(1)
 		pm.resume()
 		return
+	if GameState.replay_mode:
+		_phase = "replay_done"
+		if _scene_t > 2.4 and not _taken.has("16_replay"):
+			_taken["16_replay"] = true
+			_save_shot("16_replay")
 	# Jucătorul nu moare în restul testului
 	GameState.player_hp = GameState.max_hp
 	# lasă inamicii să tragă puțin, încearcă parry-uri

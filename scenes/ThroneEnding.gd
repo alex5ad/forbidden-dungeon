@@ -193,9 +193,9 @@ func _show_general_title() -> void:
 
 
 func _show_end_panel() -> void:
-	stats_label.text = "Parries: %d   (Perfect: %d)\nBounce Backs at 1 HP: %d\nShadows Defeated: %d\nDeaths: %d\nTime: %s" % [
+	stats_label.text = "Parries: %d   (Perfect: %d)\nBounce Backs at 1 HP: %d\nShadows Defeated: %d\nDeaths: %d\nCoins earned: %d\nTime: %s" % [
 		GameState.parries, GameState.perfect_parries, GameState.bounce_backs,
-		GameState.kills, GameState.deaths, GameState.run_time_text()]
+		GameState.kills, GameState.deaths, GameState.run_coins, GameState.run_time_text()]
 	GameState.finish_run()   # povestea s-a terminat: monedele și obiectele rămân
 	end_panel.visible = true
 	end_panel.modulate.a = 0.0

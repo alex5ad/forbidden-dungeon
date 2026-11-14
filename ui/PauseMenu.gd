@@ -8,6 +8,7 @@ var _overlay: Control
 var _play_btn: IconButton
 var _tips_btn: IconButton
 var _floor_label: Label
+var _note: Label
 
 
 func _ready() -> void:
@@ -54,6 +55,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _refresh() -> void:
 	_tips_btn.text = "KING'S TIPS: %s" % ("ON" if GameState.tips_enabled else "OFF")
 	_floor_label.text = GameState.floor_title(GameState.current_floor)
+	if GameState.replay_mode:
+		_floor_label.text = "REPLAY  ·  " + _floor_label.text
+		_note.text = "Replay: your saved journey is not affected."
+	else:
+		_note.text = "Your journey is saved at the start of every floor."
 
 
 func _build() -> void:
@@ -101,10 +107,11 @@ func _build() -> void:
 	home.custom_minimum_size = Vector2(0, 48)
 	home.pressed.connect(func():
 		_overlay.visible = false
-		GameState.go_home()
+		GameState.go_home(GameState.replay_mode)
 	)
 	vb.add_child(home)
-	var note := UiKit.label("Your journey is saved at the start of every floor.", 13, Color(GameState.COL_TEXT, 0.6), 2)
+	_note = UiKit.label("", 13, Color(GameState.COL_TEXT, 0.6), 2)
+	var note := _note
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(note)

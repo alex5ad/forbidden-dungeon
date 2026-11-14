@@ -35,6 +35,7 @@ var _chest: Actor
 var _chest_ready := false
 var _miss_streak := 0
 var _perfects_this_floor := 0
+var _was_hit := false            # pentru bonusul „fără lovituri” (+50% monede)
 var _low_hp_warned := false
 var _phase_warned := false
 var _bounce_backs_at_start := 0
@@ -223,6 +224,7 @@ func _on_boss_special(kind: String) -> void:
 #  Reacțiile fantomei la jucător
 # =============================================================================
 func _on_player_hurt(hp: int) -> void:
+	_was_hit = true
 	guide.tip_once("first_hit", 2)
 	if hp == 1 and not _low_hp_warned:
 		_low_hp_warned = true
@@ -285,13 +287,18 @@ func _on_room_cleared() -> void:
 	else:
 		hud.show_banner("ROOM CLEARED", GameState.COL_GOLD, 1.0)
 	_give_coins()
-	if floor_num <= GameState.DEEPEST_FLOOR:
+	if floor_num <= GameState.DEEPEST_FLOOR and not GameState.replay_mode:
 		await get_tree().create_timer(1.2).timeout
 		_spawn_treasure()
 		return
 	await get_tree().create_timer(0.8).timeout
-	var next := GameState.next_floor_down(floor_num)
 	exit_door.position = EXIT_POS
+	if GameState.replay_mode:
+		# rejucare: trapa duce înapoi în meniul de nivele
+		exit_door.caption = "LEVEL COMPLETE  ->  LEVELS"
+		exit_door.open_door()
+		return
+	var next := GameState.next_floor_down(floor_num)
 	exit_door.caption = "ABYSSAL PIT  ->  %s" % GameState.floor_short(next)
 	exit_door.open_door()
 	guide.tip_once("first_clear", 2)
@@ -300,11 +307,24 @@ func _on_room_cleared() -> void:
 
 
 func _give_coins() -> void:
-	## Monede pentru camera curățată (+1 pentru fiecare PERFECT, max. 10) -> magazinul de acasă.
-	var reward := GameState.floor_reward(floor_num) + mini(_perfects_this_floor, 10)
-	GameState.add_coins(reward)
+	## Monede pentru camera curățată (vezi GameState.clear_reward):
+	## bază 10 × capitol (boss 100 × capitol) + 2 / PERFECT + 50% fără lovituri;
+	## rejucarea unui etaj deja terminat plătește jumătate.
+	var repeat := GameState.replay_mode and GameState.is_cleared(floor_num)
+	var r := GameState.clear_reward(floor_num, _perfects_this_floor, not _was_hit, repeat)
+	GameState.add_coins(int(r["total"]))
+	GameState.mark_cleared(floor_num)
+	GameState.save_game()
 	GameState.play_sfx("coin", false, -6.0)
-	FX.popup(self, player.global_position + Vector2(0, -80), "+%d COINS" % reward, GameState.COL_GOLD, 24)
+	FX.popup(self, player.global_position + Vector2(0, -96), "+%d COINS" % int(r["total"]), GameState.COL_GOLD, 26)
+	var parts: Array[String] = ["floor %d" % int(r["base"])]
+	if int(r["perfect"]) > 0:
+		parts.append("perfect +%d" % int(r["perfect"]))
+	if int(r["flawless"]) > 0:
+		parts.append("flawless +%d" % int(r["flawless"]))
+	if repeat:
+		parts.append("replay x0.5")
+	FX.popup(self, player.global_position + Vector2(0, -66), "  ·  ".join(parts), Color(GameState.COL_GOLD, 0.85), 15)
 	FX.burst(self, player.global_position + Vector2(0, -40), GameState.COL_GOLD, 20, 160.0, 0.6, 3.0)
 
 
@@ -318,7 +338,10 @@ func _on_exit_entered() -> void:
 	t.tween_property(player, "global_position", exit_door.global_position, 0.25)
 	t.tween_property(player.sprite, "scale", Vector2(0.2, 0.2), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await t.finished
-	GameState.travel_to(GameState.next_floor_down(floor_num))
+	if GameState.replay_mode:
+		GameState.go_home(true)
+	else:
+		GameState.travel_to(GameState.next_floor_down(floor_num))
 
 
 func _on_player_died() -> void:
@@ -399,9 +422,9 @@ func _open_treasure() -> void:
 	await dialog.say("", "BOUNCE BACK! With the Potion and Crown, the Knight dashes back to the Ground Floor!", GameState.COL_GOLD)
 	dialog.close()
 	GameState.collect_treasure()
-	GameState.add_coins(100)
+	GameState.add_coins(GameState.COINS_TREASURE)
 	GameState.play_sfx("coin", false)
-	FX.popup(self, player.global_position + Vector2(0, -80), "+100 COINS", GameState.COL_GOLD, 28)
+	FX.popup(self, player.global_position + Vector2(0, -80), "+%d COINS" % GameState.COINS_TREASURE, GameState.COL_GOLD, 28)
 	GameState.restore_full_hp()
 	var up := create_tween().set_parallel()
 	up.tween_property(crown, "position", player.global_position + Vector2(-16, -40), 0.4)
