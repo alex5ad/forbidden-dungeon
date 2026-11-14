@@ -57,6 +57,12 @@ func _spawn(offset: Vector2, kind: Projectile.Kind, spd: float, unparryable := f
 
 func _run() -> void:
 	Engine.time_scale = 1.0
+	# testul nu atinge salvarea reală a jucătorului și pornește cu scutul de bază
+	GameState.save_path = "user://mechanics_test.save"
+	GameState.owned_items.assign(GameState.DEFAULT_ITEMS)
+	GameState.equipped_shield = "shield_wood"
+	GameState.equipped_armor = "armor_classic"
+	GameState.tips_enabled = true
 	# zid în dreapta pentru testul de ricoșeu
 	add_child(NeonWall.create(Rect2(900, 100, 32, 600)))
 
@@ -245,14 +251,118 @@ func _run() -> void:
 	guide.tip_once("first_hit")
 	guide.tip_once("first_hit")
 	_check(GameState.seen_tips.count("first_hit") == 1, "sfatul unic e spus o singură dată")
-	_check(guide._bubble.visible and guide._text.text.begins_with("Au!"), "balonul arată sfatul")
+	_check(guide._bubble.visible and guide._text.text == String(GhostGuide.EVENT_TIPS["first_hit"]), "balonul arată sfatul")
 	guide.say("normal", 1)
 	guide.say("urgent", 5)
 	_check(guide._text.text == "urgent", "prioritatea mare întrerupe")
 	_check(guide._queue.size() == 1, "sfatul normal așteaptă la rând")
 	guide.queue_free()
 
+
+	print("[13] Monede și magazin: scuturi care țin mai mult, armuri cosmetice")
+	GameState.coins = 0
+	GameState.owned_items.assign(GameState.DEFAULT_ITEMS)
+	GameState.equipped_shield = "shield_wood"
+	GameState.equipped_armor = "armor_classic"
+	_check(GameState.floor_reward(-3) == 5 and GameState.floor_reward(-23) == 9, "recompensă etaj (cap. 1: 5, cap. 3: 9)")
+	_check(GameState.floor_reward(-10) == 25 and GameState.floor_reward(-50) == 65, "recompensă boss (25 / 65)")
+	_check(not GameState.buy("shield_iron"), "fără bani nu cumperi")
+	GameState.add_coins(130)
+	_check(GameState.buy("shield_iron") and GameState.coins == 10, "cumpără Iron Shield (rămân 10)")
+	_check(GameState.equipped_shield == "shield_iron", "scutul cumpărat e echipat")
+	_check(not GameState.buy("shield_iron"), "nu îl cumperi de două ori")
+	await _new_player()
+	_check(is_equal_approx(player.parry_window, 0.18) and is_equal_approx(player.miss_cooldown, 0.4), "Iron Shield: parry 0.18s, cooldown 0.4s")
+	player.parry()
+	await get_tree().create_timer(0.16).timeout
+	_check(player.parry_active, "scutul ține încă ridicat la 0.16s")
+	GameState.equip("shield_wood")
+	GameState.add_coins(250)
+	_check(GameState.buy("armor_valkyrie"), "cumpără Valkyrie Armor")
+	await _new_player()
+	_check(is_equal_approx(player.parry_window, 0.15), "armura nu schimbă lupta")
+	_check(player.sprite.sprite_frames == SpriteLib.frames("knight_f"), "armura schimbă aspectul")
+
+	print("[14] Salvare și continuare")
+	GameState.save_path = "user://mechanics_test.save"
+	GameState.coins = 77
+	GameState.run_active = true
+	GameState.resume_floor = -12
+	GameState.player_hp = 2
+	GameState.player_name = "Tester"
+	GameState.tips_enabled = false
+	GameState.save_game()
+	GameState.coins = 0
+	GameState.resume_floor = 0
+	GameState.player_name = "X"
+	GameState.tips_enabled = true
+	_check(GameState.load_game(), "load_game() reușește")
+	_check(GameState.coins == 77 and GameState.resume_floor == -12 and GameState.player_hp == 2, "monede, etaj și HP restaurate")
+	_check(GameState.player_name == "Tester" and not GameState.tips_enabled, "nume și setarea sfaturilor restaurate")
+	_check(GameState.owns("armor_valkyrie") and GameState.equipped_armor == "armor_valkyrie", "obiectele cumpărate rămân")
+	_check(GameState.continue_scene() == GameState.SCENE_DUNGEON, "Continue -> subsolul salvat")
+	GameState.resume_floor = 0
+	GameState.mirror_visit = 2
+	_check(GameState.continue_scene() == GameState.SCENE_MIRROR, "Continue -> Oglinda (vizita 2)")
+	GameState.mirror_visit = 1
+	GameState.tips_enabled = true
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
+
+	print("[15] Cartea: titlul încape pe copertă și se scrijelește")
+	var book := DarkBook.new()
+	book.position = Vector2(576, 300)
+	book.open_amount = 0.0
+	add_child(book)
+	await _frames(1)
+	var inner := book.cover_rect().grow(-20.0)
+	_check(inner.encloses(book.title_rect()), "titlul în interiorul copertei (font %d)" % book.title_font_size)
+	await book.engrave(0.4).finished
+	_check(is_equal_approx(book.title_progress, 1.0), "scrijelirea se termină")
+	book.queue_free()
+
+	print("[16] Fantoma: nu blochează vederea, X ascunde sfaturile")
+	var g2 := GhostGuide.new()
+	g2.target = player
+	add_child(g2)
+	await _frames(2)
+	GameState.set_tips_enabled(false)
+	g2.say("nu trebuie să apară", 5)
+	_check(not g2._bubble.visible, "cu sfaturile oprite nu apare nimic")
+	GameState.set_tips_enabled(true)
+	await _frames(1)
+	_check(g2._bubble.visible, "pornite la loc -> mesaj de confirmare")
+	var corner: Vector2 = g2.PERCHES[g2._perch]
+	_check(corner.distance_to(player.global_position) > 300.0, "fantoma stă într-un colț departe de Cavaler")
+	await _frames(3)
+	# un inamic sub balon -> balonul devine aproape transparent
+	var under := ENEMY_SCENE.instantiate() as Enemy
+	under.position = g2.bubble_rect().get_center()
+	under.arena_rect = Rect2(under.position - Vector2.ONE, Vector2(2, 2))
+	add_child(under)
+	under._timer = 999.0
+	await get_tree().create_timer(0.4).timeout
+	_check(g2._bubble.modulate.a < 0.5, "balonul devine transparent peste acțiune (%.2f)" % g2._bubble.modulate.a)
+	under.queue_free()
+	# Cavalerul se apropie de colțul fantomei -> fantoma se mută în alt colț
+	var old_perch: int = g2._perch
+	player.global_position = g2.PERCHES[old_perch] + Vector2(60, 60)
+	await _frames(2)
+	_check(g2._perch != old_perch, "fantoma se mută când vine Cavalerul")
+	g2.queue_free()
+	player.global_position = Vector2(576, 400)
+
+	print("[17] Pauză: PLAY / HOME")
+	var pm := PauseMenu.new()
+	add_child(pm)
+	await _frames(1)
+	pm.pause()
+	_check(get_tree().paused and pm.is_open(), "pauza oprește jocul")
+	pm.resume()
+	_check(not get_tree().paused and not pm.is_open(), "PLAY continuă jocul")
+	pm.queue_free()
 	await get_tree().create_timer(0.3, true, false, true).timeout
 	_check(Engine.time_scale == 1.0, "time_scale revine la 1.0 după hitstop (%.2f)" % Engine.time_scale)
+	if FileAccess.file_exists(GameState.save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
 	print("MECHANICS %s (%d eșecuri)" % ["OK" if _fails == 0 else "FAIL", _fails])
 	get_tree().quit(0 if _fails == 0 else 1)

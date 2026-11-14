@@ -19,7 +19,7 @@ const SHOTS := [
 	["IntroGates", -99, 5.6, "02_intro_beam"],
 	["MirrorRoom", 0, 4.0, "03_mirror_king"],
 	["CastleMap", -1, 1.0, "04_map"],
-	["DungeonFloor", -1, 2.2, "05_floor_1"],
+	["DungeonFloor", -1, 2.9, "05_floor_1"],
 	["DungeonFloor", -11, 1.2, "05b_chapter2"],
 	["DungeonFloor", -27, 2.3, "05c_skeletons"],
 	["DungeonFloor", -10, 2.4, "06_boss1"],
@@ -35,6 +35,7 @@ const SHOTS := [
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_isolate_save()
 	GameState.floor_step = 1
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shots="):
@@ -44,7 +45,7 @@ func _ready() -> void:
 	(func():
 		# rămânem copil al root-ului (ca un autoload), iar jocul pornește ca scenă curentă
 		get_tree().current_scene = null
-		get_tree().change_scene_to_file(GameState.SCENE_INTRO)
+		get_tree().change_scene_to_file(GameState.SCENE_MENU)
 	).call_deferred()
 
 
@@ -71,6 +72,8 @@ func _process(delta: float) -> void:
 	_accept_t += delta
 	_maybe_shot(sname)
 	match sname:
+		"MainMenu":
+			_drive_menu(scene)
 		"IntroGates", "CastleMap":
 			_press_accept_every(0.4)
 		"MirrorRoom":
@@ -83,6 +86,10 @@ func _process(delta: float) -> void:
 		"DungeonFloor":
 			_drive_dungeon(scene)
 		"ThroneEnding":
+			var book: DarkBook = scene.get("book")
+			if book and book.title_progress > 0.55 and not _taken.has("13b_book"):
+				_taken["13b_book"] = true
+				_save_shot("13b_book")
 			var panel: PanelContainer = scene.get("end_panel")
 			if panel and not panel.visible:
 				_press_accept_every(0.15)  # nu apăsa „JOACĂ DIN NOU” (are focus)
@@ -90,8 +97,13 @@ func _process(delta: float) -> void:
 				_end_seen = _scene_t
 			if panel and panel.visible and _scene_t - _end_seen > 0.8:
 				_shoot_end()
-				print("SMOKE OK: visited=", _visited, " floors=", _floors, " kills=", GameState.kills,
+				if GameState.run_active or GameState.coins <= 0:
+					print("SMOKE FAIL: run_active=", GameState.run_active, " coins=", GameState.coins)
+					get_tree().quit(1)
+					return
+				print("SMOKE OK: coins=", GameState.coins, " visited=", _visited, " floors=", _floors, " kills=", GameState.kills,
 						" parries=", GameState.parries, " deaths=", GameState.deaths, " name=", GameState.player_name)
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
 				get_tree().quit(0)
 
 
@@ -116,6 +128,52 @@ func _shoot_end() -> void:
 	if _shots_dir != "":
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(_shots_dir + "/14_end.png")
+
+
+func _isolate_save() -> void:
+	## Testul nu are voie să strice salvarea reală a jucătorului.
+	GameState.save_path = "user://smoke_test.save"
+	if FileAccess.file_exists(GameState.save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path))
+	GameState.coins = 0
+	GameState.owned_items.assign(GameState.DEFAULT_ITEMS)
+	GameState.equipped_shield = "shield_wood"
+	GameState.equipped_armor = "armor_classic"
+	GameState.tips_enabled = true
+	GameState.run_active = false
+
+
+var _menu_step := 0
+
+
+func _drive_menu(scene: Node) -> void:
+	## Ecranul de acasă -> magazin (cumpără o armură) -> NEW GAME.
+	match _menu_step:
+		0:
+			if _scene_t > 0.8:
+				_save_shot("00_menu")
+				GameState.add_coins(400)
+				scene.call("_on_shop")
+				_menu_step = 1
+		1:
+			if _scene_t > 1.6:
+				var shop: ShopPanel = scene.get("_shop")
+				shop.call("_on_item_pressed", "shield_iron")
+				shop.call("_on_item_pressed", "armor_neon")
+				_save_shot("00b_shop")
+				shop.close()
+				_menu_step = 2
+		2:
+			if _scene_t > 2.2:
+				_menu_step = 3
+				scene.call("_on_new_game")
+
+
+func _save_shot(key: String) -> void:
+	if _shots_dir == "":
+		return
+	get_viewport().get_texture().get_image().save_png(_shots_dir + "/" + key + ".png")
+	print("[smoke] shot ", key)
 
 
 func _press_accept_every(interval: float) -> void:
@@ -152,6 +210,19 @@ func _drive_dungeon(scene: Node) -> void:
 			ev.action = "retry"
 			ev.pressed = true
 			Input.parse_input_event(ev)
+		return
+	# Pauza (PLAY / HOME) la etajul -3
+	if GameState.current_floor == -1 and not _taken.has("05d_pause") and _scene_t > 3.2:
+		var pm: PauseMenu = scene.get_node("PauseMenu")
+		pm.pause()
+		_taken["05d_pause"] = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_save_shot("05d_pause")
+		if not get_tree().paused:
+			print("SMOKE FAIL: pauza nu a oprit jocul")
+			get_tree().quit(1)
+		pm.resume()
 		return
 	# Jucătorul nu moare în restul testului
 	GameState.player_hp = GameState.max_hp

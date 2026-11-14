@@ -34,6 +34,7 @@ var _pillars: Array[Rect2] = []
 var _chest: Actor
 var _chest_ready := false
 var _miss_streak := 0
+var _perfects_this_floor := 0
 var _low_hp_warned := false
 var _phase_warned := false
 var _bounce_backs_at_start := 0
@@ -55,13 +56,14 @@ func _ready() -> void:
 	player.parried.connect(_on_player_parried)
 	player.parry_missed.connect(_on_parry_missed)
 	guide.target = player
-	guide.global_position = PLAYER_SPAWN + Vector2(-62, -58)
 	projectiles.child_entered_tree.connect(_on_projectile_added)
 	exit_door.visible = false
 	exit_door.entered.connect(_on_exit_entered)
 	hud.retry_pressed.connect(_retry)
 	hud.set_floor(floor_num)
 	_bounce_backs_at_start = GameState.bounce_backs
+	# checkpoint: „Continue” de pe ecranul de acasă pornește de la începutul acestui etaj
+	GameState.checkpoint(floor_num)
 	_spawn_enemies()
 	_intro()
 
@@ -224,6 +226,8 @@ func _on_player_hurt(hp: int) -> void:
 func _on_player_parried(perfect: bool) -> void:
 	_miss_streak = 0
 	if perfect:
+		_perfects_this_floor += 1
+	if perfect:
 		guide.tip_once("first_perfect", 1, 3.5)
 	if GameState.bounce_backs > _bounce_backs_at_start:
 		_bounce_backs_at_start = GameState.bounce_backs
@@ -273,6 +277,7 @@ func _on_room_cleared() -> void:
 			guide.tip_event("boss_down", 2, 4.0)
 	else:
 		hud.show_banner("ROOM CLEARED", GameState.COL_GOLD, 1.0)
+	_give_coins()
 	if floor_num <= GameState.DEEPEST_FLOOR:
 		await get_tree().create_timer(1.2).timeout
 		_spawn_treasure()
@@ -283,6 +288,17 @@ func _on_room_cleared() -> void:
 	exit_door.caption = "ABYSSAL PIT  ->  %s" % GameState.floor_short(next)
 	exit_door.open_door()
 	guide.tip_once("first_clear", 2)
+	# etajul e câștigat: „Continue” pornește direct de la următorul
+	GameState.checkpoint(next)
+
+
+func _give_coins() -> void:
+	## Monede pentru camera curățată (+1 pentru fiecare PERFECT, max. 10) -> magazinul de acasă.
+	var reward := GameState.floor_reward(floor_num) + mini(_perfects_this_floor, 10)
+	GameState.add_coins(reward)
+	GameState.play_sfx("coin", false, -6.0)
+	FX.popup(self, player.global_position + Vector2(0, -80), "+%d COINS" % reward, GameState.COL_GOLD, 24)
+	FX.burst(self, player.global_position + Vector2(0, -40), GameState.COL_GOLD, 20, 160.0, 0.6, 3.0)
 
 
 func _on_exit_entered() -> void:
@@ -376,6 +392,9 @@ func _open_treasure() -> void:
 	await dialog.say("", "BOUNCE BACK! With the Potion and Crown, the Knight dashes back to the Ground Floor!", GameState.COL_GOLD)
 	dialog.close()
 	GameState.collect_treasure()
+	GameState.add_coins(100)
+	GameState.play_sfx("coin", false)
+	FX.popup(self, player.global_position + Vector2(0, -80), "+100 COINS", GameState.COL_GOLD, 28)
 	GameState.restore_full_hp()
 	var up := create_tween().set_parallel()
 	up.tween_property(crown, "position", player.global_position + Vector2(-16, -40), 0.4)

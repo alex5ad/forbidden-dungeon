@@ -6,6 +6,8 @@ extends Node
 
 signal hp_changed(hp: int, max_hp: int)
 signal floor_changed(floor_num: int)
+signal coins_changed(total: int)
+signal tips_toggled(enabled: bool)
 
 # --- Scene -----------------------------------------------------------------
 const SCENE_INTRO := "res://scenes/IntroGates.tscn"
@@ -13,6 +15,7 @@ const SCENE_MIRROR := "res://scenes/MirrorRoom.tscn"
 const SCENE_MAP := "res://scenes/CastleMap.tscn"
 const SCENE_DUNGEON := "res://scenes/DungeonFloor.tscn"
 const SCENE_THRONE := "res://scenes/ThroneEnding.tscn"
+const SCENE_MENU := "res://scenes/MainMenu.tscn"
 
 # --- Paletă (Tomb of the Mask + FNaF 4) -------------------------------------
 const COL_BG := Color("#07050c")
@@ -43,6 +46,36 @@ const ZONES: Array[Dictionary] = [
 	{"name": "Book Abyss", "enemies": "All Shadows", "boss": "Book's Dark Avatar", "boss_hp": 25},
 ]
 
+# --- Magazin (ecranul de acasă) ---------------------------------------------
+## Scuturile „țin mai mult”: fereastra de parry e mai lungă și cooldown-ul la ratare mai scurt.
+const SHIELDS: Array[Dictionary] = [
+	{"id": "shield_wood", "name": "Wooden Shield", "price": 0, "window": 0.15, "perfect": 0.05,
+		"cooldown": 0.5, "color": Color("#ffe600"), "desc": "Parry 0.15s · cooldown 0.5s"},
+	{"id": "shield_iron", "name": "Iron Shield", "price": 120, "window": 0.18, "perfect": 0.055,
+		"cooldown": 0.4, "color": Color("#c8d6e5"), "desc": "Parry 0.18s · cooldown 0.4s"},
+	{"id": "shield_gold", "name": "Golden Shield", "price": 300, "window": 0.21, "perfect": 0.06,
+		"cooldown": 0.32, "color": Color("#ffb300"), "desc": "Parry 0.21s · cooldown 0.32s · wider PERFECT"},
+	{"id": "shield_royal", "name": "King's Shield", "price": 600, "window": 0.25, "perfect": 0.07,
+		"cooldown": 0.25, "color": Color("#7ff3ff"), "desc": "Parry 0.25s · cooldown 0.25s · widest PERFECT"},
+]
+## Armurile sunt doar cosmetice (nu schimbă nimic în luptă).
+const ARMORS: Array[Dictionary] = [
+	{"id": "armor_classic", "name": "Classic Armor", "price": 0, "look": "knight", "tint": Color(1, 1, 1),
+		"desc": "The armor you arrived in."},
+	{"id": "armor_gold", "name": "Golden Armor", "price": 80, "look": "knight", "tint": Color(1.0, 0.85, 0.35),
+		"desc": "Shines like the Royal Treasure."},
+	{"id": "armor_shadow", "name": "Shadow Armor", "price": 80, "look": "knight", "tint": Color(0.6, 0.5, 0.9),
+		"desc": "Forged from a defeated shadow."},
+	{"id": "armor_frost", "name": "Frost Armor", "price": 150, "look": "knight", "tint": Color(0.6, 0.95, 1.0),
+		"desc": "Cold as the crypt's breath."},
+	{"id": "armor_neon", "name": "Neon Armor", "price": 150, "look": "knight", "tint": Color(1.0, 0.45, 1.0),
+		"desc": "Glows like the magenta beam."},
+	{"id": "armor_valkyrie", "name": "Valkyrie Armor", "price": 250, "look": "knight_f", "tint": Color(1, 1, 1),
+		"desc": "A whole new look, with a red ponytail."},
+]
+const DEFAULT_ITEMS: Array[String] = ["shield_wood", "armor_classic"]
+const SAVE_VERSION := 1
+
 ## 1 = toate cele 50 de subsoluri pe rând (-1, -2, -3 ... -50).
 ## 5 = „Puțuri Abisale” pentru o sesiune scurtă (-1, -5, -10 ... -50).
 var floor_step: int = 1
@@ -57,6 +90,19 @@ var mirror_visit: int = 1          # 1 = prima vizită, 2 = întoarcerea cu Poț
 var has_potion: bool = false
 var has_crown: bool = false
 var seen_tips: Array[String] = []   # sfaturile unice ale fantomei deja spuse în această tură
+
+# --- Progres permanent (rămâne între ture) ----------------------------------
+var coins: int = 0
+var owned_items: Array[String] = ["shield_wood", "armor_classic"]
+var equipped_shield: String = "shield_wood"
+var equipped_armor: String = "armor_classic"
+var tips_enabled: bool = true
+
+# --- Salvare -------------------------------------------------------------------
+## Fișierul de salvare (pe Web: IndexedDB-ul browserului). Testele folosesc alt fișier.
+var save_path: String = "user://forbidden_redemption.save"
+var run_active: bool = false   # există o tură începută care poate fi continuată
+var resume_floor: int = 0      # de unde continuă tura (începutul etajului)
 
 # --- Statistici (afișate la final) ------------------------------------------
 var kills: int = 0
@@ -82,6 +128,7 @@ func _ready() -> void:
 	_build_fade_layer()
 	_build_sfx()
 	run_start_msec = Time.get_ticks_msec()
+	load_game()
 
 
 # =============================================================================
@@ -205,6 +252,202 @@ func collect_treasure() -> void:
 	mirror_visit = 2
 
 
+# =============================================================================
+#  Ture: joc nou / continuă / checkpoint (ecranul de acasă + salvare)
+# =============================================================================
+func new_run() -> void:
+	reset_run()
+	run_active = true
+	resume_floor = 0
+	save_game()
+	change_scene(SCENE_INTRO)
+
+
+func continue_scene() -> String:
+	## Scena din care continuă tura salvată.
+	if resume_floor < 0:
+		return SCENE_DUNGEON
+	if resume_floor == 0:
+		return SCENE_MIRROR
+	return SCENE_THRONE
+
+
+func continue_run() -> void:
+	current_floor = resume_floor
+	target_floor = resume_floor
+	hp_changed.emit(player_hp, max_hp)
+	change_scene(continue_scene())
+
+
+func checkpoint(floor_num: int) -> void:
+	## Salvează tura: „Continue” va porni de la începutul acestui etaj.
+	run_active = true
+	resume_floor = floor_num
+	save_game()
+
+
+func finish_run() -> void:
+	run_active = false
+	resume_floor = 0
+	save_game()
+
+
+func go_home() -> void:
+	get_tree().paused = false
+	change_scene(SCENE_MENU)
+
+
+# =============================================================================
+#  Monede și magazin
+# =============================================================================
+func floor_reward(floor_num: int) -> int:
+	## Monede pentru o cameră curățată: cresc cu fiecare capitol; boșii dau mult mai mult.
+	var chapter := maxi(chapter_number(floor_num), 1)
+	if is_boss_floor(floor_num):
+		return 25 + 10 * (chapter - 1)
+	return 5 + 2 * (chapter - 1)
+
+
+func add_coins(amount: int) -> void:
+	coins = maxi(coins + amount, 0)
+	coins_changed.emit(coins)
+
+
+func item_data(id: String) -> Dictionary:
+	for it in SHIELDS:
+		if it["id"] == id:
+			return it
+	for it in ARMORS:
+		if it["id"] == id:
+			return it
+	return {}
+
+
+func is_shield(id: String) -> bool:
+	return id.begins_with("shield_")
+
+
+func owns(id: String) -> bool:
+	return owned_items.has(id)
+
+
+func is_equipped(id: String) -> bool:
+	return id == equipped_shield or id == equipped_armor
+
+
+func buy(id: String) -> bool:
+	var it := item_data(id)
+	if it.is_empty() or owns(id) or coins < int(it["price"]):
+		return false
+	coins -= int(it["price"])
+	owned_items.append(id)
+	coins_changed.emit(coins)
+	play_sfx("buy", false)
+	equip(id)
+	return true
+
+
+func equip(id: String) -> void:
+	if not owns(id):
+		return
+	if is_shield(id):
+		equipped_shield = id
+	else:
+		equipped_armor = id
+	save_game()
+
+
+func shield_stats() -> Dictionary:
+	var it := item_data(equipped_shield)
+	return it if not it.is_empty() else SHIELDS[0]
+
+
+func armor_data() -> Dictionary:
+	var it := item_data(equipped_armor)
+	return it if not it.is_empty() else ARMORS[0]
+
+
+func set_tips_enabled(enabled: bool) -> void:
+	tips_enabled = enabled
+	tips_toggled.emit(enabled)
+	save_game()
+
+
+# =============================================================================
+#  Salvare / încărcare (JSON în user://)
+# =============================================================================
+func save_game() -> void:
+	var data := {
+		"version": SAVE_VERSION,
+		"meta": {
+			"coins": coins, "owned": owned_items, "shield": equipped_shield,
+			"armor": equipped_armor, "tips": tips_enabled,
+		},
+		"run": {
+			"active": run_active, "name": player_name, "floor": resume_floor, "hp": player_hp,
+			"mirror_visit": mirror_visit, "potion": has_potion, "crown": has_crown,
+			"floor_step": floor_step, "seen_tips": seen_tips,
+			"kills": kills, "parries": parries, "perfect": perfect_parries,
+			"bounce_backs": bounce_backs, "deaths": deaths,
+			"time_ms": Time.get_ticks_msec() - run_start_msec,
+		},
+	}
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
+	if f == null:
+		push_warning("GameState: nu pot salva în %s" % save_path)
+		return
+	f.store_string(JSON.stringify(data, "\t"))
+	f.close()
+
+
+func load_game() -> bool:
+	if not FileAccess.file_exists(save_path):
+		return false
+	var f := FileAccess.open(save_path, FileAccess.READ)
+	if f == null:
+		return false
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	var d: Dictionary = parsed
+	var meta: Dictionary = d.get("meta", {})
+	coins = int(meta.get("coins", 0))
+	owned_items.clear()
+	for id: Variant in meta.get("owned", []):
+		if not item_data(String(id)).is_empty() and not owned_items.has(String(id)):
+			owned_items.append(String(id))
+	for id in DEFAULT_ITEMS:
+		if not owned_items.has(id):
+			owned_items.append(id)
+	equipped_shield = String(meta.get("shield", "shield_wood"))
+	equipped_armor = String(meta.get("armor", "armor_classic"))
+	if not owns(equipped_shield):
+		equipped_shield = "shield_wood"
+	if not owns(equipped_armor):
+		equipped_armor = "armor_classic"
+	tips_enabled = bool(meta.get("tips", true))
+	var run: Dictionary = d.get("run", {})
+	run_active = bool(run.get("active", false))
+	player_name = String(run.get("name", player_name))
+	resume_floor = clampi(int(run.get("floor", 0)), DEEPEST_FLOOR, TOP_FLOOR)
+	player_hp = clampi(int(run.get("hp", max_hp)), 1, max_hp)
+	mirror_visit = int(run.get("mirror_visit", 1))
+	has_potion = bool(run.get("potion", false))
+	has_crown = bool(run.get("crown", false))
+	floor_step = clampi(int(run.get("floor_step", floor_step)), 1, 10)
+	seen_tips.clear()
+	for t: Variant in run.get("seen_tips", []):
+		seen_tips.append(String(t))
+	kills = int(run.get("kills", 0))
+	parries = int(run.get("parries", 0))
+	perfect_parries = int(run.get("perfect", 0))
+	bounce_backs = int(run.get("bounce_backs", 0))
+	deaths = int(run.get("deaths", 0))
+	run_start_msec = Time.get_ticks_msec() - int(run.get("time_ms", 0))
+	return true
+
+
 func reset_run() -> void:
 	current_floor = 0
 	target_floor = 0
@@ -279,6 +522,7 @@ func change_scene(path: String, fade_time: float = 0.35) -> void:
 	await t.finished
 	_hitstop_token += 1
 	Engine.time_scale = 1.0
+	get_tree().paused = false
 	get_tree().change_scene_to_file(path)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -337,6 +581,9 @@ func _build_sfx() -> void:
 	_sfx["magic"] = _tone(400.0, 1800.0, 0.6, 0.1, "sine")
 	_sfx["slam"] = _tone(140.0, 30.0, 0.5, 0.9, "square")
 	_sfx["blip"] = _tone(880.0, 880.0, 0.025, 0.0, "square")
+	_sfx["coin"] = _tone(1200.0, 1900.0, 0.12, 0.0, "square")
+	_sfx["buy"] = _tone(500.0, 1500.0, 0.25, 0.0, "sine")
+	_sfx["scratch"] = _tone(2600.0, 1400.0, 0.07, 0.85, "saw")
 
 
 func _tone(f0: float, f1: float, duration: float, noise: float, wave: String) -> AudioStreamWAV:

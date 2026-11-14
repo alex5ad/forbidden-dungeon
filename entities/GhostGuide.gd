@@ -1,6 +1,8 @@
 class_name GhostGuide
 extends Node2D
 ## Fantoma Regelui: îl însoțește pe Cavaler prin subsoluri și îi dă sfaturi într-un balon.
+## Stă într-un colț departe de Cavaler; balonul devine transparent când acoperă acțiunea.
+## Tasta X ascunde / arată sfaturile (setare salvată în GameState.tips_enabled).
 ## Folosire (din DungeonFloor):
 ##   guide.target = player
 ##   guide.say("text", prioritate, durată)      # prioritate mare = întrerupe sfatul curent
@@ -8,7 +10,9 @@ extends Node2D
 
 const COL_GHOST := Color("#7ff3ff")
 const SCREEN := Rect2(24, 70, 1104, 566)
-const BUBBLE_WIDTH := 300.0
+const BUBBLE_WIDTH := 250.0
+## Colțurile camerei în care stă fantoma (departe de Cavaler, ca să nu blocheze vederea).
+const PERCHES: Array[Vector2] = [Vector2(104, 130), Vector2(1048, 130), Vector2(104, 548), Vector2(1048, 548)]
 const MAX_QUEUE := 3
 
 ## Sfaturi generale, prin rotație pe etajele obișnuite.
@@ -69,7 +73,8 @@ var _queue: Array[Dictionary] = []
 var _current_prio := -1
 var _show_time := 0.0
 var _gap := 0.0
-var _side := -1.0   # -1 = stânga jucătorului, 1 = dreapta
+var _perch := 0                 # colțul în care stă fantoma (index în PERCHES)
+var _occlusion := 1.0           # 1 = vizibil, scade când balonul acoperă acțiunea
 var _text_tween: Tween
 
 
@@ -82,16 +87,20 @@ func _ready() -> void:
 	_actor.float_bob = true
 	add_child(_actor)
 	_build_bubble()
+	_perch = _best_perch()
+	global_position = PERCHES[_perch]
 	modulate.a = 0.0
-	create_tween().tween_property(self, "modulate:a", 1.0, 0.6)
-	if target:
-		global_position = target.global_position + Vector2(-60, -60)
+	if GameState.tips_enabled:
+		create_tween().tween_property(self, "modulate:a", 1.0, 0.6)
+	GameState.tips_toggled.connect(_on_tips_toggled)
 
 
 # -----------------------------------------------------------------------------
 #  API
 # -----------------------------------------------------------------------------
 func say(text: String, priority: int = 1, duration: float = 5.0) -> void:
+	if not GameState.tips_enabled:
+		return
 	var item := {"text": text, "prio": priority, "dur": duration}
 	if _show_time > 0.0 and priority > _current_prio:
 		_show(item)  # întrerupe sfatul mai puțin important
@@ -107,7 +116,7 @@ func say(text: String, priority: int = 1, duration: float = 5.0) -> void:
 
 func tip_once(key: String, priority: int = 2, duration: float = 4.5) -> void:
 	## Sfat de eveniment spus o singură dată pe tură.
-	if GameState.seen_tips.has(key) or not EVENT_TIPS.has(key):
+	if not GameState.tips_enabled or GameState.seen_tips.has(key) or not EVENT_TIPS.has(key):
 		return
 	GameState.seen_tips.append(key)
 	say(String(EVENT_TIPS[key]), priority, duration)
@@ -131,14 +140,33 @@ func hush() -> void:
 
 
 # -----------------------------------------------------------------------------
+#  Tasta X: ascunde / arată sfaturile
+# -----------------------------------------------------------------------------
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_tips"):
+		get_viewport().set_input_as_handled()
+		GameState.set_tips_enabled(not GameState.tips_enabled)
+
+
+func _on_tips_toggled(enabled: bool) -> void:
+	var t := create_tween()
+	t.tween_property(self, "modulate:a", 1.0 if enabled else 0.0, 0.25)
+	if enabled:
+		FX.popup(get_parent(), Vector2(576, 130), "KING'S TIPS ON  (X)", COL_GHOST, 20)
+		say("Tips are back! Press X anytime to hide them.", 1, 3.5)
+	else:
+		hush()
+		FX.popup(get_parent(), Vector2(576, 130), "KING'S TIPS OFF  (X)", Color(0.7, 0.7, 0.8), 20)
+
+
+# -----------------------------------------------------------------------------
 func _show(item: Dictionary) -> void:
 	_current_prio = int(item["prio"])
 	_show_time = float(item["dur"])
 	_text.text = String(item["text"])
 	_bubble.visible = true
 	_bubble.reset_size()
-	_bubble.scale = Vector2(0.7, 0.7)
-	_bubble.modulate.a = 1.0
+	_bubble.scale = Vector2(0.8, 0.8)
 	create_tween().tween_property(_bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if _text_tween:
 		_text_tween.kill()
@@ -152,11 +180,11 @@ func _show(item: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
-	_follow(delta)
+	_move_to_perch(delta)
+	var life := 1.0
 	if _show_time > 0.0:
 		_show_time -= delta
-		if _show_time <= 0.6:
-			_bubble.modulate.a = clampf(_show_time / 0.6, 0.0, 1.0)
+		life = clampf(_show_time / 0.6, 0.0, 1.0)
 		if _show_time <= 0.0:
 			_bubble.visible = false
 			_current_prio = -1
@@ -166,35 +194,70 @@ func _process(delta: float) -> void:
 	elif not _queue.is_empty():
 		_show(_queue.pop_front())
 	_place_bubble()
+	# balonul devine aproape transparent când acoperă jucătorul, inamicii sau proiectilele
+	var target_alpha := 0.15 if _covers_action() else 1.0
+	_occlusion = lerpf(_occlusion, target_alpha, 1.0 - exp(-10.0 * delta))
+	_bubble.modulate.a = _occlusion * life
+	_actor.modulate.a = lerpf(0.35, 1.0, _occlusion)
 
 
-func _follow(delta: float) -> void:
+# -----------------------------------------------------------------------------
+#  Poziție: fantoma stă într-un colț al camerei, departe de Cavaler,
+#  ca să nu blocheze vederea. Se mută doar când Cavalerul se apropie.
+# -----------------------------------------------------------------------------
+func _best_perch() -> int:
 	if target == null or not is_instance_valid(target):
-		return
-	var tp := target.global_position
-	# trece de partea cealaltă când jucătorul se apropie de margine
-	if tp.x < SCREEN.position.x + 140.0:
-		_side = 1.0
-	elif tp.x > SCREEN.end.x - 140.0:
-		_side = -1.0
-	var desired := tp + Vector2(62.0 * _side, -58.0)
-	desired = desired.clamp(SCREEN.position + Vector2(20, 40), SCREEN.end - Vector2(20, 20))
-	global_position = global_position.lerp(desired, 1.0 - exp(-4.0 * delta))
-	_actor.face(-_side)
+		return 0
+	var best := 0
+	var best_d := -1.0
+	for i in PERCHES.size():
+		var d := PERCHES[i].distance_to(target.global_position)
+		if d > best_d:
+			best_d = d
+			best = i
+	return best
+
+
+func _move_to_perch(delta: float) -> void:
+	if target and is_instance_valid(target):
+		if PERCHES[_perch].distance_to(target.global_position) < 300.0:
+			_perch = _best_perch()
+	global_position = global_position.lerp(PERCHES[_perch], 1.0 - exp(-3.0 * delta))
+	_actor.face(1.0 if PERCHES[_perch].x < 576.0 else -1.0)
 
 
 func _place_bubble() -> void:
 	if not _bubble.visible:
 		return
 	var sz := _bubble.size
-	var local := Vector2(-sz.x * 0.5, -sz.y - 30.0)
-	var g := global_position + local
-	# ține balonul pe ecran (sub bara HUD-ului)
+	var p := PERCHES[_perch]
+	var left := p.x < 576.0
+	var top := p.y < 324.0
+	# balonul stă lângă fantomă, spre interiorul ecranului, lipit de colț
+	var g := Vector2(p.x + 26.0 if left else p.x - 26.0 - sz.x, p.y - 22.0 if top else p.y + 22.0 - sz.y)
 	g.x = clampf(g.x, SCREEN.position.x, SCREEN.end.x - sz.x)
-	if g.y < SCREEN.position.y:
-		g.y = global_position.y + 30.0   # nu încape deasupra -> sub fantomă
+	g.y = clampf(g.y, SCREEN.position.y, SCREEN.end.y - sz.y)
 	_bubble.position = g - global_position
-	_bubble.pivot_offset = Vector2(sz.x * 0.5, sz.y)
+	_bubble.pivot_offset = Vector2(0.0 if left else sz.x, 0.0 if top else sz.y)
+
+
+func bubble_rect() -> Rect2:
+	return Rect2(_bubble.global_position, _bubble.size)
+
+
+func _covers_action() -> bool:
+	if not _bubble.visible:
+		return false
+	var r := bubble_rect().grow(26.0)
+	if target and is_instance_valid(target) and r.has_point(target.global_position):
+		return true
+	for n in get_tree().get_nodes_in_group("enemies"):
+		if r.has_point((n as Node2D).global_position):
+			return true
+	for n in get_tree().get_nodes_in_group("projectiles"):
+		if r.has_point((n as Node2D).global_position):
+			return true
+	return false
 
 
 func _build_bubble() -> void:
@@ -202,33 +265,43 @@ func _build_bubble() -> void:
 	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bubble.z_index = 1
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.02, 0.06, 0.1, 0.92)
+	style.bg_color = Color(0.02, 0.06, 0.1, 0.88)
 	style.border_color = COL_GHOST
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(6)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 8
-	style.content_margin_bottom = 10
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
 	style.shadow_color = Color(0.5, 0.95, 1.0, 0.2)
 	style.shadow_size = 6
 	_bubble.add_theme_stylebox_override("panel", style)
 	add_child(_bubble)
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_theme_constant_override("separation", 2)
+	vb.add_theme_constant_override("separation", 1)
 	_bubble.add_child(vb)
+	var head := HBoxContainer.new()
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(head)
 	var who := Label.new()
 	who.text = "The King (Ghost)"
-	who.add_theme_font_size_override("font_size", 13)
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.add_theme_font_size_override("font_size", 12)
 	who.add_theme_color_override("font_color", COL_GHOST)
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(who)
+	head.add_child(who)
+	var hint := Label.new()
+	hint.text = "[X] hide tips"
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(GameState.COL_TEXT, 0.5))
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(hint)
 	_text = Label.new()
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.custom_minimum_size = Vector2(BUBBLE_WIDTH, 0)
 	_text.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
-	_text.add_theme_font_size_override("font_size", 15)
+	_text.add_theme_font_size_override("font_size", 14)
 	_text.add_theme_color_override("font_color", GameState.COL_TEXT)
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(_text)

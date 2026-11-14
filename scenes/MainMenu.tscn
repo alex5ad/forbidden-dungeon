@@ -1,0 +1,113 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scenes/MainMenu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://common/CheckerFloor.gd" id="2_checker"]
+[ext_resource type="Script" path="res://common/NeonBeam.gd" id="3_beam"]
+[ext_resource type="Script" path="res://common/Actor.gd" id="4_actor"]
+[ext_resource type="Texture2D" path="res://assets/sprites/0x72/coin_anim_f0.png" id="5_coin"]
+
+[node name="MainMenu" type="Node2D"]
+script = ExtResource("1_menu")
+
+[node name="BeamLeft" type="ColorRect" parent="."]
+offset_left = 120.0
+offset_right = 168.0
+offset_bottom = 520.0
+mouse_filter = 2
+script = ExtResource("3_beam")
+intensity = 0.9
+bottom_fade = 0.4
+
+[node name="BeamRight" type="ColorRect" parent="."]
+offset_left = 984.0
+offset_right = 1032.0
+offset_bottom = 330.0
+mouse_filter = 2
+script = ExtResource("3_beam")
+intensity = 0.6
+bottom_fade = 0.6
+
+[node name="Floor" type="ColorRect" parent="."]
+offset_top = 522.0
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+script = ExtResource("2_checker")
+
+[node name="Knight" type="Node2D" parent="."]
+position = Vector2(270, 470)
+script = ExtResource("4_actor")
+sprite_scale = 4.0
+
+[node name="KingGhost" type="Node2D" parent="."]
+position = Vector2(170, 380)
+script = ExtResource("4_actor")
+character_id = "king_old"
+tint = Color(0.55, 0.95, 1, 0.7)
+sprite_scale = 3.0
+float_bob = true
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="Title" type="Label" parent="UI"]
+offset_top = 34.0
+offset_right = 1152.0
+offset_bottom = 190.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.901961, 0, 1)
+theme_override_colors/font_outline_color = Color(0.45, 0, 0.45, 1)
+theme_override_constants/outline_size = 14
+theme_override_constants/line_spacing = -12
+theme_override_font_sizes/font_size = 62
+text = "FORBIDDEN
+REDEMPTION"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Subtitle" type="Label" parent="UI"]
+offset_top = 192.0
+offset_right = 1152.0
+offset_bottom = 220.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.482353, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Parry the shadows. Bounce back. Redeem the castle."
+horizontal_alignment = 1
+
+[node name="Coins" type="HBoxContainer" parent="UI"]
+offset_left = 952.0
+offset_top = 18.0
+offset_right = 1132.0
+offset_bottom = 58.0
+mouse_filter = 2
+alignment = 2
+
+[node name="Icon" type="TextureRect" parent="UI/Coins"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("5_coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Amount" type="Label" parent="UI/Coins"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.901961, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 26
+text = "0"
+
+[node name="Controls" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 612.0
+offset_right = 1136.0
+offset_bottom = 636.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.75, 0.7, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "WASD move  ·  P sword  ·  L / Click shield  ·  Space jump  ·  Esc pause  ·  X hide tips"
+horizontal_alignment = 1

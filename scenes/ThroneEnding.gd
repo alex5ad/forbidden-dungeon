@@ -43,11 +43,13 @@ var _t := 0.0
 
 func _ready() -> void:
 	GameState.current_floor = GameState.TOP_FLOOR
+	GameState.checkpoint(GameState.TOP_FLOOR)
 	book.visible = false
 	book.scale = Vector2.ZERO
 	end_panel.visible = false
 	title_banner.modulate.a = 0.0
 	replay_button.pressed.connect(_on_replay)
+	UiKit.style_button(replay_button, GameState.COL_GOLD, 20)
 	_spawn_spirits()
 	crown.reparent(king)
 	crown.position = Vector2(26, -6)
@@ -148,9 +150,7 @@ func _vortex_sequence() -> void:
 	await lock.finished
 	GameState.play_sfx("perfect", false)
 	# titlul jocului apare cu litere aurii pe copertă
-	var title := create_tween()
-	title.tween_property(book.title_label, "visible_ratio", 1.0, 1.6)
-	await title.finished
+	await book.engrave(2.6).finished
 	await get_tree().create_timer(1.6).timeout
 	var shrink := create_tween().set_parallel()
 	shrink.tween_property(book, "position", Vector2(1050, 560), 0.8).set_trans(Tween.TRANS_SINE)
@@ -196,6 +196,7 @@ func _show_end_panel() -> void:
 	stats_label.text = "Parries: %d   (Perfect: %d)\nBounce Backs at 1 HP: %d\nShadows Defeated: %d\nDeaths: %d\nTime: %s" % [
 		GameState.parries, GameState.perfect_parries, GameState.bounce_backs,
 		GameState.kills, GameState.deaths, GameState.run_time_text()]
+	GameState.finish_run()   # povestea s-a terminat: monedele și obiectele rămân
 	end_panel.visible = true
 	end_panel.modulate.a = 0.0
 	create_tween().tween_property(end_panel, "modulate:a", 1.0, 0.4)
@@ -204,7 +205,7 @@ func _show_end_panel() -> void:
 
 func _on_replay() -> void:
 	GameState.reset_run()
-	GameState.change_scene(GameState.SCENE_INTRO)
+	GameState.go_home()
 
 
 # -----------------------------------------------------------------------------

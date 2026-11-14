@@ -12,6 +12,8 @@ var _hearts: Array[TextureRect] = []
 var _floor_label: Label
 var _zone_label: Label
 var _stats_label: Label
+var _coins_label: Label
+var _coins_box: HBoxContainer
 var _boss_box: VBoxContainer
 var _boss_name: Label
 var _boss_bar: ProgressBar
@@ -26,6 +28,7 @@ func _ready() -> void:
 	layer = 20
 	_build()
 	GameState.hp_changed.connect(_on_hp_changed)
+	GameState.coins_changed.connect(_on_coins_changed)
 	_on_hp_changed(GameState.player_hp, GameState.max_hp)
 
 
@@ -92,6 +95,14 @@ func show_game_over(floor_num: int, tip: String = "") -> void:
 	create_tween().tween_property(_game_over, "modulate:a", 1.0, 0.3)
 
 
+func _on_coins_changed(total: int) -> void:
+	_coins_label.text = str(total)
+	_coins_box.pivot_offset = _coins_box.size * 0.5
+	var t := create_tween()
+	t.tween_property(_coins_box, "scale", Vector2(1.3, 1.3), 0.08)
+	t.tween_property(_coins_box, "scale", Vector2.ONE, 0.18)
+
+
 func _on_hp_changed(hp: int, max_hp: int) -> void:
 	for i in _hearts.size():
 		_hearts[i].visible = i < max_hp
@@ -152,10 +163,27 @@ func _build() -> void:
 	root.add_child(_zone_label)
 
 	_stats_label = _label(14, Color(GameState.COL_TEXT, 0.8))
-	_stats_label.position = Vector2(812, 20)
-	_stats_label.size = Vector2(320, 24)
+	_stats_label.position = Vector2(770, 20)
+	_stats_label.size = Vector2(316, 24)
 	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	root.add_child(_stats_label)
+
+	# Monede (lângă inimi)
+	_coins_box = HBoxContainer.new()
+	_coins_box.position = Vector2(176, 14)
+	_coins_box.add_theme_constant_override("separation", 4)
+	_coins_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_coins_box)
+	var coin := TextureRect.new()
+	coin.texture = SpriteLib.texture("0x72/coin_anim_f0.png")
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.custom_minimum_size = Vector2(28, 32)
+	coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coins_box.add_child(coin)
+	_coins_label = _label(22, GameState.COL_GOLD)
+	_coins_label.text = str(GameState.coins)
+	_coins_box.add_child(_coins_label)
 
 	# Bara boss-ului (jos)
 	_boss_box = VBoxContainer.new()
@@ -233,10 +261,14 @@ func _build() -> void:
 	vb.add_child(_game_over_tip)
 	var btn := Button.new()
 	btn.text = "BOUNCE BACK  (Retry floor)  [R]"
-	btn.add_theme_font_size_override("font_size", 18)
+	UiKit.style_button(btn, GameState.COL_RED, 17)
 	btn.custom_minimum_size = Vector2(0, 48)
 	btn.pressed.connect(func(): retry_pressed.emit())
 	vb.add_child(btn)
+	var home := IconButton.make("HOME", "home", GameState.COL_MAGENTA, 16)
+	home.custom_minimum_size = Vector2(0, 40)
+	home.pressed.connect(func(): GameState.go_home())
+	vb.add_child(home)
 
 
 func _label(font_size: int, color: Color) -> Label:

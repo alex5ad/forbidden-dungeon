@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scenes/DungeonFloor.gd" id="1_floor"]
 [ext_resource type="Script" path="res://common/ShakeCamera.gd" id="2_cam"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://ui/HUD.gd" id="7_hud"]
 [ext_resource type="Script" path="res://ui/DialogBox.gd" id="8_dialog"]
 [ext_resource type="Script" path="res://entities/GhostGuide.gd" id="9_guide"]
+[ext_resource type="Script" path="res://ui/PauseMenu.gd" id="10_pause"]
 
 [node name="DungeonFloor" type="Node2D"]
 script = ExtResource("1_floor")
@@ -64,3 +65,6 @@ script = ExtResource("7_hud")
 
 [node name="DialogBox" type="CanvasLayer" parent="."]
 script = ExtResource("8_dialog")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("10_pause")

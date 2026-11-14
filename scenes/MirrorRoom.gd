@@ -34,6 +34,7 @@ var _t := 0.0
 
 func _ready() -> void:
 	GameState.current_floor = 0
+	GameState.checkpoint(0)
 	king_ghost.modulate.a = 0.0
 	king.visible = false
 	crown.visible = false

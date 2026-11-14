@@ -42,6 +42,7 @@ func setup(p_kind: Kind, direction: Vector2, p_speed: float, p_unparryable: bool
 
 
 func _ready() -> void:
+	add_to_group("projectiles")
 	collision_layer = GameState.LAYER_PROJECTILES
 	collision_mask = GameState.LAYER_PLAYER | GameState.LAYER_ENEMIES
 	body_entered.connect(_on_body_entered)

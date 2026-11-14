@@ -12,6 +12,7 @@ signal hurt(hp: int)
 signal died
 
 const SPEED := 220.0
+# Valorile scutului de bază; scutul echipat din magazin le înlocuiește (vezi _apply_shield).
 const PARRY_ACTIVE_TIME := 0.15
 const PERFECT_WINDOW := 0.05
 const MISS_COOLDOWN := 0.5
@@ -25,6 +26,12 @@ const JUMP_COOLDOWN := 0.8
 const JUMP_HEIGHT := 28.0
 
 @export var controllable := true
+
+## Statisticile scutului echipat (GameState.SHIELDS): „țin mai mult” = fereastră mai lungă.
+var parry_window := PARRY_ACTIVE_TIME
+var perfect_window := PERFECT_WINDOW
+var miss_cooldown := MISS_COOLDOWN
+var shield_color := Color("#ffe600")
 
 var parry_active := false
 var _parry_time := 0.0
@@ -46,7 +53,8 @@ var _sprite_base_position := Vector2(0, -10)
 
 func _ready() -> void:
 	add_to_group("player")
-	sprite.sprite_frames = SpriteLib.frames("knight")
+	_apply_armor()
+	_apply_shield()
 	sprite.play("idle")
 	_sprite_base_position = sprite.position
 	parry_area.area_entered.connect(_on_parry_area_entered)
@@ -72,6 +80,21 @@ func _physics_process(delta: float) -> void:
 		_scan_parry_area()
 	_update_visuals()
 	queue_redraw()
+
+
+func _apply_armor() -> void:
+	## Armura e doar cosmetică: alt sprite și/sau altă culoare.
+	var armor := GameState.armor_data()
+	sprite.sprite_frames = SpriteLib.frames(String(armor["look"]))
+	sprite.self_modulate = armor["tint"]
+
+
+func _apply_shield() -> void:
+	var sh := GameState.shield_stats()
+	parry_window = float(sh["window"])
+	perfect_window = float(sh["perfect"])
+	miss_cooldown = float(sh["cooldown"])
+	shield_color = sh["color"]
 
 
 # -----------------------------------------------------------------------------
@@ -130,7 +153,7 @@ func try_parry(projectile: Projectile) -> bool:
 		return false
 	if not is_instance_valid(projectile) or not projectile.is_hostile() or projectile.unparryable:
 		return false
-	var perfect := _parry_time <= PERFECT_WINDOW
+	var perfect := _parry_time <= perfect_window
 	_parry_success = true
 	projectile.reflect(get_global_mouse_position(), perfect)
 	GameState.parries += 1
@@ -218,10 +241,10 @@ func _tick_timers(delta: float) -> void:
 	_jump_time = maxf(_jump_time - delta, 0.0)
 	if parry_active:
 		_parry_time += delta
-		if _parry_time >= PARRY_ACTIVE_TIME:
+		if _parry_time >= parry_window:
 			parry_active = false
 			if not _parry_success:
-				_cooldown = MISS_COOLDOWN
+				_cooldown = miss_cooldown
 				parry_missed.emit()
 	_cooldown = maxf(_cooldown - delta, 0.0)
 	_invuln = maxf(_invuln - delta, 0.0)
@@ -254,13 +277,13 @@ func _draw() -> void:
 	var a := aim.angle()
 	draw_arc(center, PARRY_RADIUS - 8.0, a - 0.5, a + 0.5, 10, Color(GameState.COL_GOLD, 0.35), 2.0)
 	if parry_active:
-		var in_perfect := _parry_time <= PERFECT_WINDOW
-		var k := 1.0 - _parry_time / PARRY_ACTIVE_TIME
-		var col := Color.WHITE if in_perfect else GameState.COL_GOLD
+		var in_perfect := _parry_time <= perfect_window
+		var k := 1.0 - _parry_time / parry_window
+		var col := Color.WHITE if in_perfect else shield_color
 		draw_circle(center, PARRY_RADIUS, Color(col, 0.10 * k))
 		draw_arc(center, PARRY_RADIUS, 0.0, TAU, 32, Color(col, 0.9 * k), 3.0)
 	elif _cooldown > 0.0:
-		var frac := _cooldown / MISS_COOLDOWN
+		var frac := _cooldown / miss_cooldown
 		draw_arc(center, PARRY_RADIUS - 14.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 24, Color(0.6, 0.6, 0.7, 0.6), 2.0)
 	if _parry_flash > 0.0:
 		draw_arc(center, PARRY_RADIUS + 6.0 * (1.0 - _parry_flash / 0.18), 0.0, TAU, 32,

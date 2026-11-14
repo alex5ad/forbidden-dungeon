@@ -23,6 +23,12 @@ static func frames(character_id: String) -> SpriteFrames:
 				"run": _seq("knight_m_run_anim", 4),
 				"hit": [X72 + "knight_m_hit_anim_f0.png"],
 			}, 9.0)
+		"knight_f":
+			sf = _build({
+				"idle": _seq("knight_f_idle_anim", 4),
+				"run": _seq("knight_f_run_anim", 4),
+				"hit": [X72 + "knight_f_hit_anim_f0.png"],
+			}, 9.0)
 		"skeleton":
 			sf = _build({"idle": _seq("skelet_idle_anim", 4), "run": _seq("skelet_run_anim", 4)}, 8.0)
 		"necromancer":

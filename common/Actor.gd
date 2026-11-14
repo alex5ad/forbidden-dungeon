@@ -74,6 +74,13 @@ func walk_to(target: Vector2, speed: float = 110.0) -> Tween:
 
 
 func _apply_frames() -> void:
-	sprite.sprite_frames = SpriteLib.frames(character_id)
+	if character_id == "knight":
+		# Cavalerul poartă armura echipată din magazin (doar cosmetic)
+		var armor := GameState.armor_data()
+		sprite.sprite_frames = SpriteLib.frames(String(armor["look"]))
+		sprite.self_modulate = armor["tint"]
+	else:
+		sprite.sprite_frames = SpriteLib.frames(character_id)
+		sprite.self_modulate = Color.WHITE
 	sprite.flip_h = face_left
 	play("idle")

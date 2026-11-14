@@ -13,6 +13,8 @@ Povestea completă și succesiunea etajelor: [docs/STORY_AND_GDD.md](docs/STORY_
 | L / Click stânga | **Scut / parry** (lovitura reflectată pleacă spre cursor) |
 | Space | salt eschivant (invulnerabilitate scurtă, cooldown 0.8 s) |
 | R | reîncearcă etajul după moarte |
+| Esc / butonul ⏸ din dreapta-sus | **pauză** (PLAY = continuă, HOME = ecranul de acasă) |
+| X | ascunde / arată sfaturile fantomei |
 | Click / Space / Enter | avansează dialogul, grăbește harta |
 
 ## Mecanica „Bounce Back”
@@ -45,10 +47,41 @@ urcă până la ~×1.3 la etajul 9.
 Din faza 2, fiecare boss **cheamă ajutoare** din capitolul lui (max. 3); ele dispar când boss-ul moare.
 Pentru o sesiune scurtă de jam, `floor_step = 5` dă „Puțurile Abisale” (-1, -5, -10 … -50).
 
+## Ecranul de acasă, salvare și magazin
+
+Jocul pornește pe **ecranul de acasă** (`scenes/MainMenu.tscn`):
+
+| Buton | Ce face |
+|---|---|
+| CONTINUE | continuă tura salvată (arată etajul de unde reîncepi) |
+| NEW GAME | tură nouă (cere confirmare dacă există una salvată; monedele și obiectele rămân) |
+| SHOP | Magazinul Regal |
+| KING'S TIPS: ON/OFF | pornește / oprește sfaturile fantomei |
+
+**Salvarea** e automată (`GameState.save_game()`, fișier JSON în `user://`; pe Web, în browser):
+la începutul fiecărui etaj și imediat ce o cameră e curățată (atunci „Continue” pornește de la etajul
+următor). În timpul nivelului, **Esc** sau butonul ⏸ deschid pauza: **PLAY** continuă, **HOME** te duce
+acasă; poți închide jocul și reveni oricând.
+
+**Monede**: după fiecare cameră curățată primești `5 + 2 × (capitol − 1)` monede, +1 pentru fiecare
+PERFECT pe etaj (max. 10); boșii dau `25 + 10 × (capitol − 1)`; comoara de la -50 dă încă 100.
+
+| Scut (ține mai mult) | Preț | Parry | Cooldown la ratare | PERFECT |
+|---|---|---|---|---|
+| Wooden Shield | 0 | 0.15 s | 0.5 s | 0.05 s |
+| Iron Shield | 120 | 0.18 s | 0.4 s | 0.055 s |
+| Golden Shield | 300 | 0.21 s | 0.32 s | 0.06 s |
+| King's Shield | 600 | 0.25 s | 0.25 s | 0.07 s |
+
+Armurile sunt **doar cosmetice**: Golden și Shadow (80), Frost și Neon (150), Valkyrie (250, alt
+sprite). Armura echipată se vede peste tot: în nivel, în cutscene, pe hartă și pe ecranul de acasă.
+
 ## Fantoma Regelui (ghidul)
 
-În subsoluri, spiritul Regelui (`entities/GhostGuide.gd`) plutește lângă Cavaler și îi dă sfaturi
-într-un balon: la începutul fiecărui capitol (cine sunt dușmanii), la fiecare boss (puterea lui),
+În subsoluri, spiritul Regelui (`entities/GhostGuide.gd`) stă **într-un colț al camerei, departe de
+Cavaler**, ca să nu blocheze vederea: când Cavalerul se apropie, se mută în colțul opus, iar balonul
+devine aproape transparent dacă acoperă Cavalerul, inamicii sau proiectilele. **X** ascunde sau arată
+sfaturile (setarea se salvează). Îi dă sfaturi într-un balon: la începutul fiecărui capitol (cine sunt dușmanii), la fiecare boss (puterea lui),
 pe etajele obișnuite (sfaturi generale prin rotație) și la evenimente: prima lovitură primită,
 o singură inimă rămasă, 3 parry-uri ratate la rând, primul PERFECT, primul Bounce Back, prima suliță
 roșie, faza 2 a boss-ului, ajutoarele, șarja, teleportul. Sfaturile de eveniment se spun o singură
@@ -66,7 +99,8 @@ forbidden-dungeon/
 │   ├── Enemy.tscn / .gd       # toți inamicii (enemy_type 0..3) + boșii (is_boss, boss_index 1..5)
 │   ├── Projectile.tscn / .gd  # reflectare, piercing, ricoșeu
 │   └── GhostGuide.gd          # fantoma Regelui care dă sfaturi
-├── scenes/                    # cele 5 scene principale
+├── scenes/                    # ecranul de acasă + cele 5 scene principale
+│   ├── MainMenu.tscn / .gd    # ACASĂ: Continue / New Game / Shop / Tips (scena de start)
 │   ├── IntroGates.tscn / .gd  # Actul I: porțile + fasciculul magenta
 │   ├── MirrorRoom.tscn / .gd  # Parter 0: numele, Regele din oglindă / Poțiunea
 │   ├── CastleMap.tscn / .gd   # secțiunea castelului +2 … -50
@@ -83,7 +117,11 @@ forbidden-dungeon/
 ├── ui/
 │   ├── CRTOverlay.tscn        # AUTOLOAD: CanvasLayer 100 cu shader-ul de scanlines
 │   ├── DialogBox.gd           # dialog cu mașină de scris (await dialog.say(...))
-│   └── HUD.gd                 # inimi, etaj, bara boss-ului, Game Over
+│   ├── HUD.gd                 # inimi, monede, etaj, bara boss-ului, Game Over
+│   ├── PauseMenu.gd           # pauză: PLAY / TIPS / HOME (Esc sau butonul ⏸)
+│   ├── ShopPanel.gd           # Magazinul Regal (scuturi + armuri)
+│   ├── UiKit.gd               # stiluri comune (butoane neon, panouri)
+│   └── IconButton.gd          # butoane cu iconițe desenate (play, pause, home, shop)
 ├── shaders/
 │   ├── crt_scanlines.gdshader # dungi CRT (FNaF 4)
 │   ├── neon_beam.gdshader     # fascicul vertical magenta (Tomb of the Mask)
@@ -98,6 +136,9 @@ Straturi de coliziune: `1 player`, `2 enemies`, `3 walls`, `4 projectiles`.
 ## Fluxul scenelor
 
 ```
+MainMenu ──NEW GAME──▶ IntroGates          MainMenu ──CONTINUE──▶ etajul salvat (Dungeon / Mirror / Throne)
+                                           pauză (Esc) / Game Over ──HOME──▶ MainMenu
+
 IntroGates ──click porți──▶ MirrorRoom (vizita 1: nume) ──trapă──▶ CastleMap ─▶ DungeonFloor -1
       ▲                                                                 ▲              │ curățat
       │                                                                 └──Puț Abisal──┘ (-5, -10 … -50)
@@ -137,6 +178,21 @@ Enemy (CharacterBody2D, layer 2, mask walls+enemies) [Enemy.gd]
 Projectile (Area2D, layer 4, mask player+enemies) [Projectile.gd]   # desenat în _draw()
 ├── CollisionShape2D (CircleShape2D r=6)
 └── Trail (CPUParticles2D, local_coords=false)
+```
+
+### MainMenu.tscn
+```
+MainMenu (Node2D) [MainMenu.gd]               # _draw(): stele, castelul în depărtare
+├── BeamLeft / BeamRight (ColorRect) [NeonBeam]
+├── Floor (ColorRect) [CheckerFloor]
+├── Knight (Node2D) [Actor]                    # poartă armura echipată
+├── KingGhost (Node2D) [Actor]
+└── UI (CanvasLayer)
+    ├── Title (Label) "FORBIDDEN REDEMPTION"  ├── Subtitle (Label)
+    ├── Coins (HBoxContainer) └── Icon, Amount
+    ├── Controls (Label)
+    ├── *VBox: CONTINUE, NEW GAME, SHOP, KING'S TIPS (IconButton)
+    └── *ShopPanel (PanelContainer) [ShopPanel] # SHIELDS | ARMORS, BUY / EQUIP / EQUIPPED
 ```
 
 ### IntroGates.tscn
@@ -212,7 +268,8 @@ DungeonFloor (Node2D) [DungeonFloor.gd]
 │   └── *Bubble (PanelContainer) └── *VBox: Label „Regele (fantoma)”, Label sfat
 ├── HUD (CanvasLayer) [HUD]
 │   └── *inimi, etaj + capitol, statistici, bara boss-ului, banner, panou Game Over cu sfat
-└── DialogBox (CanvasLayer) [DialogBox]
+├── DialogBox (CanvasLayer) [DialogBox]
+└── PauseMenu (CanvasLayer) [PauseMenu]     # ⏸ + panoul PLAY / TIPS / HOME
 ```
 
 ### ThroneEnding.tscn
@@ -251,7 +308,12 @@ ThroneEnding (Node2D) [ThroneEnding.gd]        # _draw(): peretele cu vitralii
 | `seen_tips` | sfaturile unice ale fantomei deja spuse |
 | `damage_player()`, `heal_player()`, `restore_full_hp()` + semnalul `hp_changed` | HP persistent |
 | `hitstop(durată)`, `shake(px)`, `play_sfx(nume)` | „juice” |
-| `change_scene(path)` | tranziție cu fade |
+| `change_scene(path)`, `go_home()` | tranziție cu fade; întoarcere pe ecranul de acasă |
+| `new_run()`, `continue_run()`, `checkpoint(etaj)`, `finish_run()` | ture și salvare automată |
+| `save_game()` / `load_game()` | JSON în `user://forbidden_redemption.save` |
+| `coins`, `add_coins()`, `floor_reward(f)` + semnalul `coins_changed` | monede |
+| `SHIELDS`, `ARMORS`, `buy(id)`, `equip(id)`, `shield_stats()`, `armor_data()` | magazinul |
+| `tips_enabled`, `set_tips_enabled()` + semnalul `tips_toggled` | sfaturile fantomei (X) |
 
 ## Rulare și export Web
 
