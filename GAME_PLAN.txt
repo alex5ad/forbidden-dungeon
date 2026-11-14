@@ -1,0 +1,155 @@
+==========================================================
+  HACKATHON PLAN - tema "BOUNCE BACK"
+  Joc web (Godot 4, export HTML5) pentru itch.io
+==========================================================
+
+TITLU (de ales): Ye Olde Return Policy / Return to Sender / Riposte
+Repo: forbidden-dungeon (GitHub, alex5ad)
+
+----------------------------------------------------------
+1. CONCEPT (pe scurt)
+----------------------------------------------------------
+Arenă top-down, medievală. Ești un cavaler cu scut/sabie.
+Arcașii stau pe margini și trag în tine.
+Tu NU ai alt atac: dai PARRY la săgeți și le întorci spre
+cursor, ca să omori arcașii cu propriile lor săgeți.
+
+Pe temă, în două feluri:
+  - literal: săgețile ricoșează (de zid, înapoi spre inamici)
+  - figurat: revii din marginea morții (un perfect parry la
+    1 viață îți dă o viață înapoi)
+
+Pitch în 5 secunde: "Arcașii trag în tine. Întoarce-le
+săgețile și răzbună-te."
+
+----------------------------------------------------------
+2. MECANICI
+----------------------------------------------------------
+- Mișcare: WASD / săgeți, viteză ~220
+- Parry (tasta/click): fereastră ~0.15 s
+    * Perfect parry: primele ~0.05 s
+      -> săgeata merge mai repede (x1.8), STRÂPUNGE,
+         poate omorî mai mulți arcași, hitstop mai mare
+    * Parry normal: săgeata x1.2, dispare după ce lovește
+    * Parry ratat: cooldown ~0.5 s (ești vulnerabil)
+- Săgeata reflectată merge spre CURSOR (țintești tu)
+- Ricoșeu: săgeata reflectată sare o dată de zid (bank shots)
+- Vieți: 3. La 1 viață, un perfect parry îți redă una.
+- Arcași:
+    * telegraph clar (se înroșește / linie spre tine) ~0.6 s
+    * ritm de tragere random 1.5-3 s
+- Tipuri de inamici (în ordinea în care le adaugi):
+    1. arcaș simplu
+    2. arcaș cu evantai de 3 săgeți
+    3. arcaș cu săgeată în flăcări (mai lentă)
+    4. arcaș cu săgeată NEREFLECTABILE (trebuie să te feri)
+- Valuri: 1 arcaș -> 2 -> 3 + tipuri noi. Scor = valuri
+  supraviețuite / arcași omorâți / combo de parry-uri.
+
+----------------------------------------------------------
+3. ORDINEA DE LUCRU (scope pe etape)
+----------------------------------------------------------
+ETAPA 1 - Jucabil (prima oră sau două)
+  [ ] Proiect Godot + repo + .gitignore + primul push
+  [ ] Player cu mișcare
+  [ ] Parry cu fereastră de timp
+  [ ] O săgeată care vine spre player și se reflectă
+  [ ] Un arcaș care moare când e lovit de săgeata reflectată
+
+ETAPA 2 - Joc complet
+  [ ] Telegraph la arcaș
+  [ ] Spawner de valuri
+  [ ] Moarte player + restart + scor
+  [ ] Meniu de start (OBLIGATORIU pe web: audio-ul cere un click)
+
+ETAPA 3 - Tema și adâncimea
+  [ ] Perfect parry (străpungere + viteză)
+  [ ] Ricoșeu de zid
+  [ ] Bounce back: heal la perfect parry cu 1 viață
+  [ ] Tipuri noi de arcași
+
+ETAPA 4 - Polish (aici se câștigă hackathonul)
+  [ ] Hitstop 2-3 frame-uri la parry reușit
+  [ ] Flash alb + screen shake mic
+  [ ] Sunet metalic cu pitch aleatoriu (0.9 - 1.2)
+  [ ] Sunet diferit, mai ascuțit, la perfect parry
+  [ ] Particule roșii la kill, scântei la parry
+  [ ] Arcașul zboară puțin înapoi, săgeata rămâne înfiptă
+  [ ] Muzică în loop
+  [ ] Pagina itch.io: thumbnail, descriere, controale, credite
+
+REGULĂ: nu adăuga mecanici noi după Etapa 3. Un singur
+mecanism bine făcut bate zece făcute pe jumătate.
+
+----------------------------------------------------------
+4. SETĂRI GODOT
+----------------------------------------------------------
+- Renderer: Compatibility (pentru export web)
+- Default Texture Filter: Nearest (Project Settings >
+  Rendering > Textures), altfel pixel art-ul iese blurat
+- Input Map: left, right, up, down, parry
+- Straturi de coliziune: 1 = player, 2 = inamici, 3 = ziduri
+- Particule: CPUParticles2D (mai sigur pe web)
+- Numele proiectului în Project Settings > Application >
+  Config > Name
+
+----------------------------------------------------------
+5. RESURSE
+----------------------------------------------------------
+Grafică (pixel art 16x16, stil unitar):
+  - Kenney "Tiny Dungeon" (CC0) - prima alegere
+  - Kenney "Roguelike Characters" / "Roguelike RPG Pack"
+  - 0x72 "Dungeon Tileset II" (alternativă)
+  - Săgeata: o desenezi tu, 8x3 pixeli (Pixelorama / Piskel)
+Sunete:
+  - Kenney "RPG Audio" + "Impact Sounds" (CC0)
+  - jsfxr (sfxr.me) / ChipTone: fâșâit săgeată, încordat arc,
+    moarte arcaș, perfect parry
+Muzică:
+  - itch.io tag "music" + "medieval" + "free", OpenGameArt,
+    Kevin MacLeod (incompetech, CC-BY -> credit)
+Fonturi (OFL): MedievalSharp, Pirata One (titlu);
+  Press Start 2P / Kenney Fonts (UI)
+
+Înainte să folosiți ceva:
+  1. Citiți regulile hackathonului (asset-uri permise?)
+  2. Țineți o listă: autor, link, licență, pentru fiecare
+  3. Evitați licențe "non-commercial" / "no redistribution"
+
+----------------------------------------------------------
+6. GIT / ECHIPĂ
+----------------------------------------------------------
+- .gitignore: .godot/, export/, build/ (zip-ul pentru itch
+  NU intră în repo)
+- COMMIT-uiți: fișierele .import și .uid, project.godot,
+  .tscn, .tres, scripturi
+- Flow: git pull -> lucrezi -> git add . -> git commit -m
+  "..." -> git push
+- Nu editați aceeași scenă .tscn în același timp
+- Commit des, mai ales înainte de experimente riscante
+
+----------------------------------------------------------
+7. EXPORT PE ITCH.IO (testați DEVREME, nu la deadline)
+----------------------------------------------------------
+  [ ] Project > Export > Add > Web
+  [ ] Exportați ca index.html într-un folder gol
+  [ ] Zip cu index.html în RĂDĂCINA arhivei (nu într-un subfolder)
+  [ ] itch.io: New project > Kind of project: HTML
+  [ ] Upload zip + bifați "This file will be played in the browser"
+  [ ] Dacă folosiți threads: bifați "SharedArrayBuffer support"
+      (exportul single-threaded din 4.3+ nu are nevoie)
+  [ ] Setați dimensiunea viewport-ului (ex. 1152x648)
+  [ ] Testați de pe pagina itch.io, în browser, cu sunet
+  [ ] Pagina publică / trimisă la jam înainte de deadline
+
+----------------------------------------------------------
+8. CHECKLIST FINAL (ultima oră)
+----------------------------------------------------------
+  [ ] Jocul pornește de pe itch.io fără erori
+  [ ] Ecran de start cu controale explicate
+  [ ] Se poate restarta după moarte fără reîncărcarea paginii
+  [ ] Creditele pentru toate asset-urile sunt în descriere
+  [ ] Link la repo (dacă regulile cer cod public)
+  [ ] Screenshot-uri / GIF cu un perfect parry pe pagină
+  [ ] Încadrat clar în tema "Bounce Back" în descriere
+==========================================================
