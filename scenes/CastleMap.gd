@@ -97,7 +97,7 @@ func _show_banner(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _tween and _tween.is_running() and (event.is_action_pressed("parry") or event.is_action_pressed("ui_accept")):
+	if _tween and _tween.is_running() and (event.is_action_pressed("shield") or event.is_action_pressed("ui_accept")):
 		_tween.set_speed_scale(4.0)
 
 

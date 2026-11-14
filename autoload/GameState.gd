@@ -42,7 +42,7 @@ const ZONES: Array[Dictionary] = [
 	{"name": "Abisul Cărții", "boss": "Avatarul Cărții Întunericului", "boss_hp": 25},
 ]
 const ZONE_HINTS: Array[String] = [
-	"Click / Space = PARRY chiar când lovitura te atinge. Proiectilul pleacă spre CURSOR.",
+	"P = atac cu sabia. L = scut: parează proiectilele spre cursor. Space = salt eschivant.",
 	"Spiritele trag în evantai de 3. Parează unul și țintește-l înapoi!",
 	"Săgețile scheleților sunt rapide: urmărește linia de ochire.",
 	"Sulițele ROȘII nu pot fi parate. Ferește-te de ele!",

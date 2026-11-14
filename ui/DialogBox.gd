@@ -63,7 +63,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		pressed = mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT
-	elif event.is_action_pressed("ui_accept") or event.is_action_pressed("parry"):
+	elif event.is_action_pressed("ui_accept"):
 		pressed = true
 	if not pressed:
 		return

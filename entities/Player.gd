@@ -1,6 +1,6 @@
 class_name Player
 extends CharacterBody2D
-## Cavalerul. NU are atac direct: doar parry() (Click Stânga / Space).
+## Cavalerul: atac cu sabia (P), scut/parry (L / Click) și salt eschivant (Space).
 ##  - fereastră activă 0.15s; primele 0.05s = PERFECT
 ##  - ratare -> cooldown 0.5s
 ##  - Perfect Parry la 1 HP (din 3) -> +1 HP („Bounce Back from death”)
@@ -16,6 +16,11 @@ const MISS_COOLDOWN := 0.5
 const PERFECT_HITSTOP := 0.05
 const INVULN_TIME := 0.9
 const PARRY_RADIUS := 34.0
+const ATTACK_RANGE := 58.0
+const ATTACK_COOLDOWN := 0.32
+const JUMP_TIME := 0.42
+const JUMP_COOLDOWN := 0.8
+const JUMP_HEIGHT := 28.0
 
 @export var controllable := true
 
@@ -26,6 +31,11 @@ var _cooldown := 0.0
 var _invuln := 0.0
 var _dead := false
 var _parry_flash := 0.0
+var _attack_cooldown := 0.0
+var _attack_flash := 0.0
+var _jump_time := 0.0
+var _jump_cooldown := 0.0
+var _sprite_base_position := Vector2(0, -10)
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var parry_area: Area2D = $ParryArea2D
@@ -36,6 +46,7 @@ func _ready() -> void:
 	add_to_group("player")
 	sprite.sprite_frames = SpriteLib.frames("knight")
 	sprite.play("idle")
+	_sprite_base_position = sprite.position
 	parry_area.area_entered.connect(_on_parry_area_entered)
 
 
@@ -46,8 +57,12 @@ func _physics_process(delta: float) -> void:
 	if controllable:
 		var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 		velocity = dir * SPEED
-		if Input.is_action_just_pressed("parry"):
+		if Input.is_action_just_pressed("shield"):
 			parry()
+		if Input.is_action_just_pressed("attack"):
+			attack()
+		if Input.is_action_just_pressed("jump"):
+			jump()
 	else:
 		velocity = Vector2.ZERO
 	move_and_slide()
@@ -69,6 +84,42 @@ func parry() -> void:
 	GameState.play_sfx("swing", true, -14.0)
 	# Proiectilele aflate deja în rază sunt prinse instant (perfect).
 	_scan_parry_area()
+
+
+func attack() -> void:
+	if _dead or _attack_cooldown > 0.0:
+		return
+	_attack_cooldown = ATTACK_COOLDOWN
+	_attack_flash = 0.16
+	var aim := (get_global_mouse_position() - global_position).normalized()
+	if aim == Vector2.ZERO:
+		aim = Vector2.RIGHT
+	sprite.flip_h = aim.x < 0.0
+	GameState.play_sfx("swing", true, -10.0)
+	var target: Enemy
+	var target_dist := ATTACK_RANGE + 1.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if not node is Enemy or node.is_dead():
+			continue
+		var enemy := node as Enemy
+		var offset := enemy.global_position - global_position
+		var distance := offset.length()
+		if distance <= ATTACK_RANGE and aim.dot(offset.normalized()) >= 0.25 and distance < target_dist:
+			target = enemy
+			target_dist = distance
+	if target:
+		target.take_hit(1, (target.global_position - global_position).normalized())
+		GameState.shake(2.0)
+		FX.burst(get_parent(), target.global_position, GameState.COL_GOLD, 8, 110.0, 0.22, 2.5)
+
+
+func jump() -> void:
+	if _dead or _jump_cooldown > 0.0:
+		return
+	_jump_time = JUMP_TIME
+	_jump_cooldown = JUMP_COOLDOWN
+	_invuln = maxf(_invuln, JUMP_TIME)
+	GameState.play_sfx("swing", true, -18.0)
 
 
 func try_parry(projectile: Projectile) -> bool:
@@ -157,6 +208,10 @@ func _die() -> void:
 #  Timere + vizual
 # -----------------------------------------------------------------------------
 func _tick_timers(delta: float) -> void:
+	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
+	_attack_flash = maxf(_attack_flash - delta, 0.0)
+	_jump_cooldown = maxf(_jump_cooldown - delta, 0.0)
+	_jump_time = maxf(_jump_time - delta, 0.0)
 	if parry_active:
 		_parry_time += delta
 		if _parry_time >= PARRY_ACTIVE_TIME:
@@ -175,6 +230,8 @@ func _update_visuals() -> void:
 		sprite.modulate.a = 0.35 if int(_invuln * 20.0) % 2 == 0 else 1.0
 	else:
 		sprite.modulate.a = 1.0
+	var jump_progress := 1.0 - _jump_time / JUMP_TIME
+	sprite.position.y = _sprite_base_position.y - sin(jump_progress * PI) * JUMP_HEIGHT
 	if _invuln > INVULN_TIME - 0.25:
 		return  # lasă animația „hit” să se vadă
 	if velocity.length() > 5.0:
@@ -203,3 +260,8 @@ func _draw() -> void:
 	if _parry_flash > 0.0:
 		draw_arc(center, PARRY_RADIUS + 6.0 * (1.0 - _parry_flash / 0.18), 0.0, TAU, 32,
 				Color(1, 1, 1, _parry_flash / 0.18), 2.0)
+	if _attack_flash > 0.0:
+		var attack_angle := (get_global_mouse_position() - global_position).angle()
+		var alpha := _attack_flash / 0.16
+		draw_arc(center, ATTACK_RANGE * (0.7 + 0.3 * (1.0 - alpha)), attack_angle - 0.65,
+			attack_angle + 0.65, 12, Color(GameState.COL_GOLD, alpha), 4.0)
