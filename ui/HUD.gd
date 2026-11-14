@@ -19,6 +19,7 @@ var _banner: Label
 var _hint: Label
 var _game_over: PanelContainer
 var _game_over_title: Label
+var _game_over_tip: Label
 
 
 func _ready() -> void:
@@ -35,7 +36,15 @@ func _process(_delta: float) -> void:
 
 func set_floor(floor_num: int) -> void:
 	_floor_label.text = GameState.floor_short(floor_num)
-	_zone_label.text = GameState.floor_name(floor_num)
+	if floor_num < 0:
+		var chapter := GameState.chapter_number(floor_num)
+		if GameState.is_boss_floor(floor_num):
+			_zone_label.text = "Capitolul %d  ·  %s" % [chapter, GameState.floor_name(floor_num)]
+		else:
+			_zone_label.text = "Capitolul %d  ·  %s  ·  etaj %d/10" % [
+				chapter, GameState.floor_name(floor_num), GameState.chapter_floor(floor_num)]
+	else:
+		_zone_label.text = GameState.floor_name(floor_num)
 
 
 func show_boss_bar(boss_name: String, max_hp: int) -> void:
@@ -74,8 +83,10 @@ func show_hint(text: String, duration: float = 7.0) -> void:
 	t.tween_property(_hint, "modulate:a", 0.0, 0.6)
 
 
-func show_game_over(floor_num: int) -> void:
+func show_game_over(floor_num: int, tip: String = "") -> void:
 	_game_over_title.text = "AI CĂZUT ÎN %s" % GameState.floor_short(floor_num)
+	_game_over_tip.text = "Sfatul Regelui: %s" % tip if tip != "" else ""
+	_game_over_tip.visible = tip != ""
 	_game_over.visible = true
 	_game_over.modulate.a = 0.0
 	create_tween().tween_property(_game_over, "modulate:a", 1.0, 0.3)
@@ -172,10 +183,11 @@ func _build() -> void:
 
 	# Banner central
 	_banner = _label(54, GameState.COL_GOLD)
-	_banner.position = Vector2(0, 250)
-	_banner.size = Vector2(1152, 80)
-	_banner.pivot_offset = Vector2(576, 40)
+	_banner.position = Vector2(0, 210)
+	_banner.size = Vector2(1152, 160)
+	_banner.pivot_offset = Vector2(576, 80)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_banner.add_theme_constant_override("outline_size", 10)
 	_banner.modulate.a = 0.0
 	root.add_child(_banner)
@@ -190,8 +202,8 @@ func _build() -> void:
 
 	# Game Over
 	_game_over = PanelContainer.new()
-	_game_over.position = Vector2(326, 214)
-	_game_over.size = Vector2(500, 220)
+	_game_over.position = Vector2(326, 190)
+	_game_over.size = Vector2(500, 260)
 	_game_over.visible = false
 	var gs := StyleBoxFlat.new()
 	gs.bg_color = Color(0.03, 0.01, 0.06, 0.95)
@@ -214,6 +226,11 @@ func _build() -> void:
 	sub.text = "Umbrele râd. Dar un Cavaler se ridică mereu."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(sub)
+	_game_over_tip = _label(15, Color("#7ff3ff"))
+	_game_over_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_game_over_tip.custom_minimum_size = Vector2(440, 0)
+	_game_over_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(_game_over_tip)
 	var btn := Button.new()
 	btn.text = "BOUNCE BACK  (Reîncearcă etajul)  [R]"
 	btn.add_theme_font_size_override("font_size", 18)

@@ -7,6 +7,8 @@ extends CharacterBody2D
 ## Viața este ținută în GameState ca să persiste între etaje.
 
 signal parried(perfect: bool)
+signal parry_missed
+signal hurt(hp: int)
 signal died
 
 const SPEED := 220.0
@@ -183,6 +185,8 @@ func take_damage(amount: int) -> bool:
 	sprite.play("hit")
 	if GameState.player_hp <= 0:
 		_die()
+	else:
+		hurt.emit(GameState.player_hp)
 	return true
 
 
@@ -218,6 +222,7 @@ func _tick_timers(delta: float) -> void:
 			parry_active = false
 			if not _parry_success:
 				_cooldown = MISS_COOLDOWN
+				parry_missed.emit()
 	_cooldown = maxf(_cooldown - delta, 0.0)
 	_invuln = maxf(_invuln - delta, 0.0)
 	_parry_flash = maxf(_parry_flash - delta, 0.0)

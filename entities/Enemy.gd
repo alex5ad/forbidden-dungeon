@@ -6,15 +6,26 @@ extends CharacterBody2D
 ##  enemy_type 2 = Schelet Arcaș   (Subsol -21..-29) săgeți rapide
 ##  enemy_type 3 = Cavaler Fantomă (Subsol -31..-49) săbii spectrale / sulițe roșii NEREFLECTABILE
 ##  is_boss = true + boss_index 1..5 -> boșii de la -10, -20, -30, -40, -50 (10..25 HP, faze).
-## Inamicii nu au atac de contact: sunt răniți DOAR de proiectilele reflectate.
+## Fiecare boss e o variantă mai puternică a inamicilor din capitolul lui, cu aceleași puteri:
+##  1 Marele Duh      -> globuri + TELEPORT (dispare și reapare)
+##  2 Oracolul        -> evantaie TRIPLE + spirale
+##  3 Comandantul     -> salve + PLOAIE DE SĂGEȚI
+##  4 Garda Căzută    -> săbii, sulițe roșii + ȘARJĂ (damage la contact, se evită cu saltul)
+##  5 Avatarul Cărții -> toate puterile de mai sus
+## Din faza 2, boșii cheamă ajutoare din capitolul lor (summon_requested -> DungeonFloor).
 
 signal died(enemy: Enemy)
 signal hp_changed(hp: int, max_hp: int)
+signal summon_requested(enemy_type: int, at: Vector2)
+signal special_used(kind: String)   # "blink", "charge", "summon", "phase"
 
 enum Type { GHOST, SPIRIT, SKELETON_ARCHER, PHANTOM_KNIGHT }
 enum State { COOLDOWN, TELEGRAPH, FIRING }
 
 const PROJECTILE_SCENE := preload("res://entities/Projectile.tscn")
+const CHARGE_SPEED := 560.0
+const CHARGE_TIME := 0.5
+const MAX_MINIONS := 3
 
 const TYPE_DATA := {
 	Type.GHOST: {"name": "Fantomă", "look": "ghost", "tint": Color(0.75, 1.0, 0.95, 0.85),
@@ -31,7 +42,7 @@ const TYPE_DATA := {
 const BOSS_LOOK := [
 	{},
 	{"look": "ghost", "scale": 4.0, "tint": Color(1.0, 0.65, 1.0, 0.9), "float": true},
-	{"look": "necromancer", "scale": 3.0, "tint": Color(0.8, 0.75, 1.0, 1.0), "float": true},
+	{"look": "spirit", "scale": 5.0, "tint": Color(0.8, 0.55, 1.0, 0.95), "float": true},
 	{"look": "skeleton", "scale": 4.0, "tint": Color(1.0, 0.95, 0.75, 1.0), "float": false},
 	{"look": "phantom_knight", "scale": 4.0, "tint": Color(1.0, 0.45, 0.5, 0.85), "float": true},
 	{"look": "demon", "scale": 3.0, "tint": Color(0.85, 0.6, 1.0, 1.0), "float": false},
@@ -41,6 +52,10 @@ const BOSS_LOOK := [
 @export var is_boss := false
 @export_range(0, 5) var boss_index := 0
 @export var max_hp := 1
+## Ritmul inamicului (GameState.floor_difficulty): cooldown mai scurt, proiectile mai rapide.
+@export var difficulty := 1.0
+## Ajutor chemat de un boss (dispare când boss-ul moare).
+@export var is_minion := false
 ## Zona în care se plimbă (setată de DungeonFloor).
 @export var arena_rect := Rect2(112, 128, 928, 448)
 
@@ -65,6 +80,10 @@ var _wander_target := Vector2.ZERO
 var _wander_timer := 0.0
 var _flash := 0.0
 var _knockback := Vector2.ZERO
+var _charge_time := 0.0
+var _charge_dir := Vector2.ZERO
+var _charge_contact := false
+var _alpha_mult := 1.0
 var _anim_t := 0.0
 var _dead := false
 var _player: Player
@@ -75,6 +94,8 @@ var _player: Player
 
 func _ready() -> void:
 	add_to_group("enemies")
+	if is_minion:
+		add_to_group("minions")
 	_configure()
 	hp = max_hp
 	_timer = randf_range(1.0, 1.8) if is_boss else randf_range(0.7, 1.8)
@@ -137,6 +158,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(delta: float, can_fight: bool) -> void:
+	if _charge_time > 0.0:
+		_charge_step(delta)
+		return
 	var moving_allowed := _state == State.COOLDOWN
 	_wander_timer -= delta
 	if _wander_timer <= 0.0 or global_position.distance_to(_wander_target) < 8.0:
@@ -202,7 +226,7 @@ func _next_cooldown() -> float:
 			_:
 				return randf_range(0.9, 1.3)
 	var cd: Vector2 = TYPE_DATA[enemy_type]["cooldown"]
-	return randf_range(cd.x, cd.y)
+	return randf_range(cd.x, cd.y) / maxf(difficulty, 0.5)
 
 
 # =============================================================================
@@ -213,11 +237,18 @@ func _begin_attack() -> void:
 	_telegraph_total = 0.6
 	_telegraph_aimed = true
 	_telegraph_danger = false
+	var pre_delay := 0.0
 	if is_boss:
+		if _wants_summon():
+			_summon(1)
+		if _wants_blink():
+			_blink()
+			pre_delay = 0.5
 		_build_boss_attack()
 	else:
 		_build_regular_attack()
 	_attack_count += 1
+	_telegraph_total += pre_delay
 	_state = State.TELEGRAPH
 	_timer = _telegraph_total
 
@@ -242,7 +273,7 @@ func _build_regular_attack() -> void:
 func _build_boss_attack() -> void:
 	var alt := _attack_count % 2 == 0
 	match boss_index:
-		1:  # Marele Duh al Criptei
+		1:  # Marele Duh al Criptei – o fantomă uriașă: globuri + teleport
 			if _phase == 1:
 				if alt:
 					for i in 3:
@@ -256,35 +287,42 @@ func _build_boss_attack() -> void:
 				else:
 					_ring(12, Projectile.Kind.GLOB, 130.0)
 					_add(0.45, func(): _fire_aimed(Projectile.Kind.GLOB, 190.0))
-		2:  # Oracolul Fără Ochi
+		2:  # Oracolul Fără Ochi – un spirit uriaș: evantaie triple
 			if _phase == 1:
 				if alt:
-					_add(0.0, func(): _fire_fan(5, 60.0, Projectile.Kind.ORB, 180.0))
+					for i in 3:
+						_add(i * 0.28, func(): _fire_fan(3, 32.0, Projectile.Kind.ORB, 180.0))
 				else:
 					_spiral(16, 1, 0.07, 25.0, Projectile.Kind.ORB, 150.0)
 			else:
 				if alt:
 					_add(0.0, func(): _fire_fan(5, 60.0, Projectile.Kind.ORB, 190.0))
-					_add(0.35, func(): _fire_fan(4, 45.0, Projectile.Kind.ORB, 190.0))
+					_add(0.3, func(): _fire_fan(3, 32.0, Projectile.Kind.ORB, 200.0))
+					_add(0.6, func(): _fire_fan(5, 60.0, Projectile.Kind.ORB, 190.0))
 				else:
 					_spiral(20, 2, 0.06, 21.0, Projectile.Kind.ORB, 160.0)
-					_add(1.25, func(): _fire_aimed(Projectile.Kind.ORB, 210.0))
-		3:  # Comandantul de Os
+					_add(1.25, func(): _fire_fan(3, 32.0, Projectile.Kind.ORB, 210.0))
+		3:  # Comandantul de Os – scheletul-șef: salve + ploaie de săgeți
 			if _phase == 1:
 				if alt:
 					for i in 3:
 						_add(i * 0.18, func(): _fire_aimed(Projectile.Kind.ARROW, 360.0))
 				else:
-					_add(0.0, func(): _fire_fan(5, 40.0, Projectile.Kind.ARROW, 320.0))
+					_add(0.0, func(): _fire_fan(7, 70.0, Projectile.Kind.ARROW, 300.0))
+					_add(0.4, func(): _fire_fan(6, 60.0, Projectile.Kind.ARROW, 320.0))
 			else:
 				if alt:
 					for i in 5:
 						_add(i * 0.14, func(): _fire_aimed(Projectile.Kind.ARROW, 380.0))
 				else:
 					_ring(12, Projectile.Kind.ARROW, 260.0)
-					_add(0.3, func(): _fire_aimed(Projectile.Kind.ARROW, 360.0))
-		4:  # Garda Regală Căzută
-			if _phase == 1:
+					_add(0.3, func(): _fire_fan(7, 70.0, Projectile.Kind.ARROW, 320.0))
+					_add(0.6, func(): _fire_aimed(Projectile.Kind.ARROW, 380.0))
+		4:  # Garda Regală Căzută – cavalerul-fantomă suprem: săbii, sulițe, șarjă
+			if _attack_count % 3 == 2:
+				_charge_attack()
+				_add(CHARGE_TIME + 0.1, func(): _fire_fan(3, 36.0, Projectile.Kind.SWORD, 250.0))
+			elif _phase == 1:
 				if alt:
 					_add(0.0, func(): _fire_fan(3, 30.0, Projectile.Kind.SWORD, 260.0))
 				else:
@@ -301,12 +339,16 @@ func _build_boss_attack() -> void:
 					_telegraph_total = 0.8
 					_add(0.0, func(): _fire_fan(3, 40.0, Projectile.Kind.SPEAR, 300.0, true))
 					_add(0.4, func(): _fire_aimed(Projectile.Kind.SWORD, 270.0))
-		5:  # Avatarul Cărții Întunericului
+		5:  # Avatarul Cărții Întunericului – toate puterile umbrelor
+			if _phase >= 2 and _attack_count % 3 == 2:
+				_charge_attack()
+				_add(CHARGE_TIME + 0.1, func(): _ring_now(12, Projectile.Kind.BOSS_ORB, 150.0))
+				return
 			match _phase:
 				1:
 					if alt:
 						_spiral(18, 2, 0.07, 20.0, Projectile.Kind.BOSS_ORB, 150.0)
-						_add(1.3, func(): _fire_aimed(Projectile.Kind.ORB, 200.0))
+						_add(1.3, func(): _fire_fan(3, 32.0, Projectile.Kind.ORB, 200.0))
 					else:
 						_add(0.0, func(): _fire_fan(5, 56.0, Projectile.Kind.ORB, 190.0))
 						_add(0.45, func(): _fire_aimed(Projectile.Kind.SPEAR, 320.0, true))
@@ -314,20 +356,124 @@ func _build_boss_attack() -> void:
 					if alt:
 						_ring(14, Projectile.Kind.BOSS_ORB, 140.0)
 						_add(0.35, func(): _fire_aimed(Projectile.Kind.SWORD, 260.0))
-						_add(0.65, func(): _fire_aimed(Projectile.Kind.SWORD, 260.0))
+						_add(0.65, func(): _fire_fan(5, 50.0, Projectile.Kind.ARROW, 320.0))
 					else:
 						_telegraph_danger = true
 						_spiral(20, 2, 0.06, 19.0, Projectile.Kind.BOSS_ORB, 160.0)
 						_add(0.6, func(): _fire_fan(3, 36.0, Projectile.Kind.SPEAR, 300.0, true))
-						_add(1.2, func(): _fire_aimed(Projectile.Kind.ORB, 220.0))
+						_add(1.2, func(): _fire_aimed(Projectile.Kind.GLOB, 220.0))
 				_:
 					if alt:
 						_spiral(24, 3, 0.05, 17.0, Projectile.Kind.BOSS_ORB, 175.0)
 						_add(1.25, func(): _fire_fan(3, 30.0, Projectile.Kind.SWORD, 270.0))
 					else:
 						_ring(16, Projectile.Kind.BOSS_ORB, 150.0)
-						_add(0.3, func(): _fire_fan(5, 44.0, Projectile.Kind.ARROW, 330.0))
+						_add(0.3, func(): _fire_fan(7, 70.0, Projectile.Kind.ARROW, 330.0))
 						_add(0.7, func(): _fire_aimed(Projectile.Kind.SPEAR, 340.0, true))
+
+
+# =============================================================================
+#  Puterile boșilor: teleport, șarjă, ajutoare
+# =============================================================================
+func _wants_blink() -> bool:
+	if boss_index == 1:
+		return _attack_count % 3 == 2
+	if boss_index == 5:
+		return _phase >= 2 and _attack_count % 4 == 1
+	return false
+
+
+func _wants_summon() -> bool:
+	return _phase >= 2 and _attack_count % 4 == 3 and _minion_count() < 2
+
+
+func _minion_count() -> int:
+	return get_tree().get_nodes_in_group("minions").size()
+
+
+func _blink() -> void:
+	## Fantoma dispare și reapare în alt colț al camerei.
+	special_used.emit("blink")
+	var target := _random_boss_spot()
+	GameState.play_sfx("magic", false, -10.0)
+	var t := create_tween()
+	t.tween_property(self, "_alpha_mult", 0.0, 0.2)
+	t.tween_callback(_teleport_to.bind(target))
+	t.tween_property(self, "_alpha_mult", 1.0, 0.25)
+
+
+func _teleport_to(target: Vector2) -> void:
+	if _dead:
+		return
+	FX.burst(get_parent(), global_position, GameState.COL_MAGENTA, 18, 140.0, 0.4, 3.0)
+	global_position = target
+	FX.burst(get_parent(), target, GameState.COL_MAGENTA, 18, 140.0, 0.4, 3.0)
+
+
+func _random_boss_spot() -> Vector2:
+	var r := Rect2(arena_rect.position.x + 60.0, arena_rect.position.y + 10.0,
+			arena_rect.size.x - 120.0, arena_rect.size.y * 0.35)
+	for i in 10:
+		var p := Vector2(randf_range(r.position.x, r.end.x), randf_range(r.position.y, r.end.y))
+		if _player == null or not is_instance_valid(_player) or p.distance_to(_player.global_position) > 220.0:
+			return p
+	return r.get_center()
+
+
+func _charge_attack() -> void:
+	## Telegraph roșu (linia arată direcția), apoi se aruncă spre jucător.
+	_telegraph_aimed = true
+	_telegraph_danger = true
+	_telegraph_total = 0.75
+	_add(0.0, _start_charge)
+
+
+func _start_charge() -> void:
+	_charge_dir = _aim_dir()
+	_charge_time = CHARGE_TIME
+	_charge_contact = false
+	special_used.emit("charge")
+	GameState.play_sfx("hurt", false, -8.0)
+	GameState.shake(5.0)
+
+
+func _charge_step(delta: float) -> void:
+	_charge_time -= delta
+	velocity = _charge_dir * CHARGE_SPEED
+	move_and_slide()
+	# damage la contact, verificat O SINGURĂ DATĂ pe șarjă: dacă jucătorul e în salt
+	# (invulnerabil) la primul contact, a sărit peste șarjă – chiar dacă e împins.
+	if not _charge_contact and _player and is_instance_valid(_player) and not _player.is_dead():
+		var reach := (collision.shape as CircleShape2D).radius + 14.0
+		if global_position.distance_to(_player.global_position) < reach:
+			_charge_contact = true
+			_player.take_damage(1)
+	if get_slide_collision_count() > 0 or _charge_time <= 0.0:
+		_charge_time = 0.0
+		velocity = Vector2.ZERO
+		GameState.shake(6.0)
+		FX.burst(get_parent(), global_position, Color(0.8, 0.8, 1.0), 16, 160.0, 0.4, 3.0)
+
+
+func _summon(count: int) -> void:
+	## Cheamă ajutoare din capitolul boss-ului (Avatarul cheamă orice tip).
+	var n := mini(count, MAX_MINIONS - _minion_count())
+	if n <= 0 or _dead or not is_boss:
+		return
+	for i in n:
+		var t := boss_index - 1 if boss_index <= 4 else randi_range(0, 3)
+		var at := global_position + Vector2.RIGHT.rotated(randf() * TAU) * (7.0 * _sprite_scale + 70.0)
+		summon_requested.emit(t, at)
+	special_used.emit("summon")
+	GameState.play_sfx("magic", false, -6.0)
+	FX.popup(get_parent(), global_position + Vector2(0, -70), "AJUTOARE!", GameState.COL_MAGENTA, 22)
+
+
+func _ring_now(count: int, kind: Projectile.Kind, spd: float) -> void:
+	## Inel de proiectile tras imediat (folosit după șarjă).
+	var offset := randf() * TAU
+	for i in count:
+		_shoot(Vector2.RIGHT.rotated(offset + TAU * i / count), kind, spd)
 
 
 func _add(t: float, fn: Callable) -> void:
@@ -376,7 +522,7 @@ func _shoot(dir: Vector2, kind: Projectile.Kind, spd: float, unparryable: bool =
 	if _dead or projectile_parent == null or not is_instance_valid(projectile_parent):
 		return
 	var p := PROJECTILE_SCENE.instantiate() as Projectile
-	p.setup(kind, dir, spd, unparryable)
+	p.setup(kind, dir, spd * (1.0 + (difficulty - 1.0) * 0.6), unparryable)
 	var muzzle := 6.0 * _sprite_scale
 	p.position = global_position + dir.normalized() * muzzle
 	projectile_parent.add_child(p)
@@ -415,18 +561,28 @@ func _update_phase() -> void:
 		GameState.shake(10.0)
 		GameState.play_sfx("magic", false)
 		FX.popup(get_parent(), global_position + Vector2(0, -60), "FAZA %d" % _phase, GameState.COL_MAGENTA, 26)
+		special_used.emit("phase")
+		_summon.call_deferred(2)
 
 
 func is_dead() -> bool:
 	return _dead
 
 
-func _die() -> void:
+func dissolve() -> void:
+	## Ajutoarele dispar când boss-ul lor e învins.
+	if not _dead:
+		_die(false)
+
+
+func _die(count_kill: bool = true) -> void:
 	_dead = true
 	_queue.clear()
+	_charge_time = 0.0
 	velocity = Vector2.ZERO
 	collision.set_deferred("disabled", true)
-	GameState.kills += 1
+	if count_kill:
+		GameState.kills += 1
 	GameState.play_sfx("die")
 	var col := GameState.COL_MAGENTA if is_boss else Color(0.85, 0.4, 1.0)
 	FX.burst(get_parent(), global_position, col, 40 if is_boss else 22, 260.0 if is_boss else 180.0, 0.7, 4.0)
@@ -456,6 +612,7 @@ func _update_visuals() -> void:
 		c = c.lerp(Color(1.0, 0.25, 0.3, c.a), k * 0.85)
 	if _flash > 0.0:
 		c = Color(4.0, 4.0, 4.0, 1.0)
+	c.a *= _alpha_mult
 	sprite.modulate = c
 
 
@@ -471,6 +628,11 @@ func _draw() -> void:
 		draw_set_transform(Vector2(0, 14), 0.0, Vector2(1.0, 0.4))
 		draw_circle(Vector2.ZERO, 12.0, Color(0, 0, 0, 0.35))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if _charge_time > 0.0:
+		# dâră în urma șarjei
+		for i in 4:
+			var back := -_charge_dir * (18.0 + i * 16.0)
+			draw_circle(back, aura_r * (0.9 - i * 0.18), Color(GameState.COL_RED, 0.35 - i * 0.08))
 	if _state != State.TELEGRAPH or _player == null or not is_instance_valid(_player):
 		return
 	var k := 1.0 - _timer / _telegraph_total

@@ -27,8 +27,32 @@ Povestea completă și succesiunea etajelor: [docs/STORY_AND_GDD.md](docs/STORY_
 | Ricoșeu din zid | o singură dată (`bounces_left = 1`), `velocity.bounce(normal)` | `Projectile._physics_process()` |
 | Sulițe roșii | `unparryable = true`: nu pot fi parate, te ferești | `Enemy` tip 3 și boșii 4–5 |
 
-Pacing: `GameState.floor_step = 5` → „Puțuri Abisale” (-1, -5, -10 … -50, toți cei 5 boși în ~10 min).
-Pune `1` ca să joci fiecare etaj pe rând.
+## Cele 50 de subsoluri: 5 capitole
+
+Se joacă toate etajele, de la -1 la -50 (`GameState.floor_step = 1`). Fiecare capitol are 10 subsoluri:
+9 etaje cu inamicii capitolului, apoi boss-ul. Pe primul etaj al capitolului apare „CAPITOLUL N”.
+În capitol, numărul de inamici crește (etajele 1–3 / 4–6 / 7–9), iar ritmul lor (`floor_difficulty`)
+urcă până la ~×1.3 la etajul 9.
+
+| Capitol | Subsoluri | Inamici | Boss (etajul 10) | Puterea boss-ului |
+|---|---|---|---|---|
+| 1 Cripta Fantomelor | -1 … -9 | Fantome (glob lent) | Marele Duh al Criptei (10 HP) | globuri, inele + **teleport** |
+| 2 Catacombele Spiritelor | -11 … -19 | Spirite (evantai de 3) | Oracolul Fără Ochi (13 HP) | **evantaie triple**, spirale |
+| 3 Osuarul Scheleților | -21 … -29 | Scheleți Arcași (săgeți rapide) | Comandantul de Os (16 HP) | salve, **ploaie de săgeți** |
+| 4 Cazarma Coruptă | -31 … -39 | Cavaleri Fantomă (sabie / suliță roșie) | Garda Regală Căzută (20 HP) | săbii, sulițe + **șarjă** (sari cu Space!) |
+| 5 Abisul Cărții | -41 … -49 | toți | Avatarul Cărții (25 HP, 3 faze) | toate puterile de mai sus |
+
+Din faza 2, fiecare boss **cheamă ajutoare** din capitolul lui (max. 3); ele dispar când boss-ul moare.
+Pentru o sesiune scurtă de jam, `floor_step = 5` dă „Puțurile Abisale” (-1, -5, -10 … -50).
+
+## Fantoma Regelui (ghidul)
+
+În subsoluri, spiritul Regelui (`entities/GhostGuide.gd`) plutește lângă Cavaler și îi dă sfaturi
+într-un balon: la începutul fiecărui capitol (cine sunt dușmanii), la fiecare boss (puterea lui),
+pe etajele obișnuite (sfaturi generale prin rotație) și la evenimente: prima lovitură primită,
+o singură inimă rămasă, 3 parry-uri ratate la rând, primul PERFECT, primul Bounce Back, prima suliță
+roșie, faza 2 a boss-ului, ajutoarele, șarja, teleportul. Sfaturile de eveniment se spun o singură
+dată pe tură (`GameState.seen_tips`). La Game Over, panoul afișează un sfat al Regelui.
 
 ## Structura de foldere
 
@@ -40,7 +64,8 @@ forbidden-dungeon/
 ├── entities/                  # entități reutilizabile
 │   ├── Player.tscn / .gd      # Cavalerul + parry
 │   ├── Enemy.tscn / .gd       # toți inamicii (enemy_type 0..3) + boșii (is_boss, boss_index 1..5)
-│   └── Projectile.tscn / .gd  # reflectare, piercing, ricoșeu
+│   ├── Projectile.tscn / .gd  # reflectare, piercing, ricoșeu
+│   └── GhostGuide.gd          # fantoma Regelui care dă sfaturi
 ├── scenes/                    # cele 5 scene principale
 │   ├── IntroGates.tscn / .gd  # Actul I: porțile + fasciculul magenta
 │   ├── MirrorRoom.tscn / .gd  # Parter 0: numele, Regele din oglindă / Poțiunea
@@ -182,8 +207,11 @@ DungeonFloor (Node2D) [DungeonFloor.gd]
 ├── Player (instanță Player.tscn)
 ├── Projectiles (Node2D, z_index 5)
 │   └── *Projectile …
+├── Guide (Node2D) [GhostGuide]                # fantoma Regelui, urmărește jucătorul
+│   ├── *Actor "king_old" (spectral)
+│   └── *Bubble (PanelContainer) └── *VBox: Label „Regele (fantoma)”, Label sfat
 ├── HUD (CanvasLayer) [HUD]
-│   └── *inimi, etaj/zonă, statistici, bara boss-ului, banner, indiciu, panou Game Over
+│   └── *inimi, etaj + capitol, statistici, bara boss-ului, banner, panou Game Over cu sfat
 └── DialogBox (CanvasLayer) [DialogBox]
 ```
 
@@ -218,7 +246,9 @@ ThroneEnding (Node2D) [ThroneEnding.gd]        # _draw(): peretele cu vitralii
 | `mirror_visit`, `has_potion`, `has_crown` | progresul poveștii |
 | `travel_to(etaj)` / `arrive()` | trece prin CastleMap și intră în scena etajului |
 | `next_floor_down(f)`, `zone_index(f)`, `is_boss_floor(f)`, `boss_index(f)` | logica etajelor |
-| `enemy_types_for_floor(f)`, `enemy_count_for_floor(f)` | compoziția fiecărei arene |
+| `chapter_number(f)`, `chapter_floor(f)`, `is_chapter_start(f)` | capitolele (10 subsoluri fiecare) |
+| `enemy_types_for_floor(f)`, `enemy_count_for_floor(f)`, `floor_difficulty(f)` | compoziția și ritmul fiecărei arene |
+| `seen_tips` | sfaturile unice ale fantomei deja spuse |
 | `damage_player()`, `heal_player()`, `restore_full_hp()` + semnalul `hp_changed` | HP persistent |
 | `hitstop(durată)`, `shake(px)`, `play_sfx(nume)` | „juice” |
 | `change_scene(path)` | tranziție cu fade |
@@ -238,13 +268,15 @@ ThroneEnding (Node2D) [ThroneEnding.gd]        # _draw(): peretele cu vitralii
 godot --headless --path . res://tests/MechanicsTest.tscn
 ```
 Verifică regulile de parry (fereastră perfectă/normală, ×1.8/×1.2, piercing, ricoșeu unic,
-+1 HP la 1 HP, sulițe nereflectabile, cooldown, progresia etajelor, revenirea din hitstop).
++1 HP la 1 HP, sulițe nereflectabile, cooldown, revenirea din hitstop), progresia celor 50 de etaje,
+puterile boșilor (șarja lovește, saltul o evită, teleport, ajutoare în faza 2) și fantoma-ghid.
 
 ```bash
 godot --headless --path . res://tests/SmokeTest.tscn
 ```
-Joacă automat tot jocul (Intro → Oglindă → 11 arene cu cei 5 boși → Comoara → Bounce Back → Final)
-și se termină cu `SMOKE OK`. Cu `-- --shots=<folder>` (fără `--headless`) salvează și capturi de ecran.
+Joacă automat tot jocul (Intro → Oglindă → cele 50 de subsoluri cu cei 5 boși → Comoara → Bounce Back
+→ Final) și se termină cu `SMOKE OK`. Opțiuni după `--`: `--step=5` (varianta scurtă) și
+`--shots=<folder>` (fără `--headless`) pentru capturi de ecran.
 
 ## Credite
 

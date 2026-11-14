@@ -34,24 +34,18 @@ const LAYER_PROJECTILES := 8   # layer 4
 # --- Etaje -------------------------------------------------------------------
 const DEEPEST_FLOOR := -50
 const TOP_FLOOR := 2
+## Cele 5 capitole (câte 10 subsoluri): 9 etaje cu inamicii capitolului + boss-ul la final.
 const ZONES: Array[Dictionary] = [
-	{"name": "Cripta Fantomelor", "boss": "Marele Duh al Criptei", "boss_hp": 10},
-	{"name": "Catacombele Spiritelor", "boss": "Oracolul Fără Ochi", "boss_hp": 13},
-	{"name": "Osuarul Scheleților", "boss": "Comandantul de Os", "boss_hp": 16},
-	{"name": "Cazarma Coruptă", "boss": "Garda Regală Căzută", "boss_hp": 20},
-	{"name": "Abisul Cărții", "boss": "Avatarul Cărții Întunericului", "boss_hp": 25},
-]
-const ZONE_HINTS: Array[String] = [
-	"P = atac cu sabia. L = scut: parează proiectilele spre cursor. Space = salt eschivant.",
-	"Spiritele trag în evantai de 3. Parează unul și țintește-l înapoi!",
-	"Săgețile scheleților sunt rapide: urmărește linia de ochire.",
-	"Sulițele ROȘII nu pot fi parate. Ferește-te de ele!",
-	"Abisul Cărții: toate umbrele deodată. Ricoșează proiectilele din pereți!",
+	{"name": "Cripta Fantomelor", "enemies": "Fantome", "boss": "Marele Duh al Criptei", "boss_hp": 10},
+	{"name": "Catacombele Spiritelor", "enemies": "Spirite", "boss": "Oracolul Fără Ochi", "boss_hp": 13},
+	{"name": "Osuarul Scheleților", "enemies": "Scheleți Arcași", "boss": "Comandantul de Os", "boss_hp": 16},
+	{"name": "Cazarma Coruptă", "enemies": "Cavaleri Fantomă", "boss": "Garda Regală Căzută", "boss_hp": 20},
+	{"name": "Abisul Cărții", "enemies": "Toate umbrele", "boss": "Avatarul Cărții Întunericului", "boss_hp": 25},
 ]
 
-## Pacing pentru Game Jam: 5 = „Puțuri Abisale” (-1, -5, -10, -15 ... -50),
-## 1 = fiecare etaj pe rând (-1, -2, -3 ... -50).
-var floor_step: int = 5
+## 1 = toate cele 50 de subsoluri pe rând (-1, -2, -3 ... -50).
+## 5 = „Puțuri Abisale” pentru o sesiune scurtă (-1, -5, -10 ... -50).
+var floor_step: int = 1
 
 # --- Starea poveștii ---------------------------------------------------------
 var player_name: String = "Cavaler"
@@ -62,7 +56,7 @@ var player_hp: int = 3
 var mirror_visit: int = 1          # 1 = prima vizită, 2 = întoarcerea cu Poțiunea
 var has_potion: bool = false
 var has_crown: bool = false
-var seen_zone_hints: Array[int] = []
+var seen_tips: Array[String] = []   # sfaturile unice ale fantomei deja spuse în această tură
 
 # --- Statistici (afișate la final) ------------------------------------------
 var kills: int = 0
@@ -127,13 +121,35 @@ func enemy_types_for_floor(floor_num: int) -> Array[int]:
 	return types
 
 
+func chapter_number(floor_num: int) -> int:
+	## 1..5 (capitolul = zona de 10 subsoluri)
+	return zone_index(floor_num) + 1
+
+
+func chapter_floor(floor_num: int) -> int:
+	## Al câtelea etaj din capitol: 1..10 (10 = boss).
+	return (absi(floor_num) - 1) % 10 + 1
+
+
+func is_chapter_start(floor_num: int) -> bool:
+	return floor_num < 0 and chapter_floor(floor_num) == 1
+
+
 func enemy_count_for_floor(floor_num: int) -> int:
+	## Crește în interiorul capitolului: etajele 1-3 / 4-6 / 7-9.
 	if floor_num == -1:
 		return 1  # primul etaj = tutorial
 	var z := zone_index(floor_num)
 	var base: int = [1, 2, 2, 2, 3][z]
-	var deep_in_zone := (absi(floor_num) % 10) >= 5
-	return mini(base + (1 if deep_in_zone else 0), 5)
+	var ramp := floori((chapter_floor(floor_num) - 1) / 3.0)
+	return mini(base + ramp, 5)
+
+
+func floor_difficulty(floor_num: int) -> float:
+	## Multiplicator de ritm pentru inamici: 1.0 la începutul capitolului, ~1.3 la etajul 9.
+	if floor_num >= 0 or is_boss_floor(floor_num):
+		return 1.0
+	return 1.0 + 0.035 * (chapter_floor(floor_num) - 1)
 
 
 func floor_short(floor_num: int) -> String:
@@ -196,7 +212,7 @@ func reset_run() -> void:
 	mirror_visit = 1
 	has_potion = false
 	has_crown = false
-	seen_zone_hints.clear()
+	seen_tips.clear()
 	kills = 0
 	parries = 0
 	perfect_parries = 0
