@@ -1,0 +1,107 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scenes/IntroGates.gd" id="1_intro"]
+[ext_resource type="Script" path="res://common/ShakeCamera.gd" id="2_cam"]
+[ext_resource type="Script" path="res://common/NeonBeam.gd" id="3_beam"]
+[ext_resource type="Script" path="res://props/GateDoor.gd" id="4_gate"]
+[ext_resource type="Script" path="res://common/Actor.gd" id="5_actor"]
+
+[node name="IntroGates" type="Node2D"]
+script = ExtResource("1_intro")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 324)
+script = ExtResource("2_cam")
+
+[node name="Beam" type="Node2D" parent="."]
+
+[node name="Glow" type="ColorRect" parent="Beam"]
+offset_left = 396.0
+offset_top = 600.0
+offset_right = 756.0
+offset_bottom = 600.0
+mouse_filter = 2
+script = ExtResource("3_beam")
+intensity = 0.45
+core_width = 0.0
+
+[node name="Core" type="ColorRect" parent="Beam"]
+offset_left = 506.0
+offset_top = 600.0
+offset_right = 646.0
+offset_bottom = 600.0
+mouse_filter = 2
+script = ExtResource("3_beam")
+intensity = 1.6
+core_width = 0.3
+
+[node name="Gates" type="Node2D" parent="."]
+
+[node name="GateLeft" type="Node2D" parent="Gates"]
+position = Vector2(512, 600)
+script = ExtResource("4_gate")
+
+[node name="GateRight" type="Node2D" parent="Gates"]
+position = Vector2(640, 600)
+script = ExtResource("4_gate")
+hinge_left = false
+
+[node name="GateParticles" type="CPUParticles2D" parent="."]
+position = Vector2(576, 590)
+emitting = false
+amount = 60
+lifetime = 1.6
+emission_shape = 3
+emission_rect_extents = Vector2(60, 4)
+direction = Vector2(0, -1)
+spread = 12.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 160.0
+initial_velocity_max = 420.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(1, 0.4, 1, 1)
+
+[node name="Knight" type="Node2D" parent="."]
+position = Vector2(576, 720)
+script = ExtResource("5_actor")
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="Narration" type="Label" parent="UI"]
+offset_left = 96.0
+offset_top = 28.0
+offset_right = 1056.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.94902, 0.913725, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+autowrap_mode = 3
+visible_characters_behavior = 1
+
+[node name="ClickPrompt" type="Label" parent="UI"]
+offset_left = 376.0
+offset_top = 408.0
+offset_right = 776.0
+offset_bottom = 440.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.901961, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "[ CLICK PE PORȚI ]"
+horizontal_alignment = 1
+
+[node name="Controls" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 104.0
+offset_right = 1136.0
+offset_bottom = 128.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.65, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+text = "WASD / Săgeți — mișcare      Click stânga / Space — PARRY (lovitura pleacă spre cursor)"
