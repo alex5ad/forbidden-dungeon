@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://shaders/crt_scanlines.gdshader" id="1_crt"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("1_crt")
+shader_parameter/line_spacing = 3.0
+shader_parameter/line_intensity = 0.3
+shader_parameter/roll_speed = 0.06
+shader_parameter/vignette = 0.55
+shader_parameter/flicker = 0.025
+
+[node name="CRTOverlay" type="CanvasLayer"]
+process_mode = 3
+layer = 100
+
+[node name="Scanlines" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_crt")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
