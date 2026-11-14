@@ -77,7 +77,7 @@ func _intro() -> void:
 		tip = GhostGuide.BOSS_TIPS[z]
 		prio = 2
 	elif GameState.is_chapter_start(floor_num):
-		hud.show_banner("CAPITOLUL %d\n%s" % [GameState.chapter_number(floor_num), GameState.ZONES[z]["name"]],
+		hud.show_banner("CHAPTER %d\n%s" % [GameState.chapter_number(floor_num), GameState.ZONES[z]["name"]],
 				GameState.COL_GOLD, 1.8)
 		GameState.play_sfx("magic", false, -8.0)
 		tip = GhostGuide.CHAPTER_TIPS[z]
@@ -267,12 +267,12 @@ func _on_room_cleared() -> void:
 	if boss_floor:
 		GameState.restore_full_hp()
 		GameState.play_sfx("heal", false)
-		hud.show_banner("BOSS ÎNVINS!", GameState.COL_MAGENTA, 1.4)
-		FX.popup(self, player.global_position + Vector2(0, -50), "HP REFĂCUT", GameState.COL_GOLD, 22)
+		hud.show_banner("BOSS DEFEATED!", GameState.COL_MAGENTA, 1.4)
+		FX.popup(self, player.global_position + Vector2(0, -50), "HEALTH RESTORED", GameState.COL_GOLD, 22)
 		if floor_num > GameState.DEEPEST_FLOOR:
 			guide.tip_event("boss_down", 2, 4.0)
 	else:
-		hud.show_banner("CAMERĂ CURĂȚATĂ", GameState.COL_GOLD, 1.0)
+		hud.show_banner("ROOM CLEARED", GameState.COL_GOLD, 1.0)
 	if floor_num <= GameState.DEEPEST_FLOOR:
 		await get_tree().create_timer(1.2).timeout
 		_spawn_treasure()
@@ -280,7 +280,7 @@ func _on_room_cleared() -> void:
 	await get_tree().create_timer(0.8).timeout
 	var next := GameState.next_floor_down(floor_num)
 	exit_door.position = EXIT_POS
-	exit_door.caption = "PUȚUL ABISAL  ->  %s" % GameState.floor_short(next)
+	exit_door.caption = "ABYSSAL PIT  ->  %s" % GameState.floor_short(next)
 	exit_door.open_door()
 	guide.tip_once("first_clear", 2)
 
@@ -336,8 +336,8 @@ func _spawn_treasure() -> void:
 	FX.burst(self, CHEST_POS, GameState.COL_GOLD, 40, 240.0, 0.8, 4.0)
 	GameState.play_sfx("magic", false)
 	GameState.shake(8.0)
-	hud.show_banner("CUFĂRUL REGAL", GameState.COL_GOLD, 1.4)
-	guide.say("Comoara mea! Deschide cufărul, %s!" % GameState.player_name, 3, 6.0)
+	hud.show_banner("ROYAL CHEST", GameState.COL_GOLD, 1.4)
+	guide.say("My treasure! Open the chest, %s!" % GameState.player_name, 3, 6.0)
 	_chest_ready = true
 
 
@@ -370,10 +370,10 @@ func _open_treasure() -> void:
 	t.tween_property(crown, "position", CHEST_POS + Vector2(-50, -70), 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_property(potion, "position", CHEST_POS + Vector2(50, -70), 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await t.finished
-	await dialog.say("", "Cufărul Regal se deschide. Aur cât să umple o sală întreagă... și Coroana Regală!", NARRATOR)
-	await dialog.say("", "Pe fundul cufărului pulsează o fiolă roșie: Poțiunea Vieții Veșnice. Tinerețe fără sfârșit... sau viață pentru cel care a murit.", NARRATOR)
-	await dialog.say(GameState.player_name, "Nemurirea nu e pentru mine. Regele este cel care merită o a doua șansă. I-o voi duce lui.", Color.WHITE)
-	await dialog.say("", "BOUNCE BACK! Cu Poțiunea și Coroana, Cavalerul pornește fulgerător înapoi spre Parter!", GameState.COL_GOLD)
+	await dialog.say("", "The Royal Chest opens. Enough gold to fill an entire hall... and the Royal Crown!", NARRATOR)
+	await dialog.say("", "At the bottom of the chest pulses a red vial: the Potion of Eternal Life. Endless youth... or life for the one who died.", NARRATOR)
+	await dialog.say(GameState.player_name, "Immortality isn't for me. The King deserves a second chance. I'll take it to him.", Color.WHITE)
+	await dialog.say("", "BOUNCE BACK! With the Potion and Crown, the Knight dashes back to the Ground Floor!", GameState.COL_GOLD)
 	dialog.close()
 	GameState.collect_treasure()
 	GameState.restore_full_hp()

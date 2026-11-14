@@ -36,7 +36,7 @@ func _ready() -> void:
 	king_icon.position = icon.position + Vector2(-26, 0)
 	camera.position = Vector2(576, _camera_y(icon.position.y))
 	banner.modulate.a = 0.0
-	title_label.text = "SECȚIUNEA CASTELULUI"
+	title_label.text = "CASTLE CROSS-SECTION"
 	_travel()
 
 
@@ -81,7 +81,7 @@ func _travel() -> void:
 	FX.burst(self, icon.position, GameState.COL_GOLD, 24, 180.0, 0.5, 3.0)
 	floor_label.text = GameState.floor_title(_to)
 	if GameState.is_chapter_start(_to):
-		_show_banner("CAPITOLUL %d" % GameState.chapter_number(_to))
+		_show_banner("CHAPTER %d" % GameState.chapter_number(_to))
 	elif not bounce_back:
 		_show_banner(GameState.floor_short(_to))
 	await get_tree().create_timer(0.6 if quick and not GameState.is_chapter_start(_to) else 1.1).timeout
@@ -143,7 +143,7 @@ func _draw() -> void:
 	# corpul turnului
 	draw_rect(Rect2(left, TOP_Y, right - left, bottom - TOP_Y), Color("#0b0616"))
 	# rândurile de deasupra solului
-	var above := {2: "Sala Tronului", 1: "Galeria Regală", 0: "Sala Oglinzii"}
+	var above := {2: "Throne Room", 1: "Royal Gallery", 0: "Mirror Hall"}
 	for f: int in [2, 1, 0]:
 		var y0 := floor_y(f) - BIG_ROW * 0.5
 		var r := Rect2(left, y0, right - left, BIG_ROW)
@@ -159,7 +159,7 @@ func _draw() -> void:
 	# solul și porțile
 	var ground := floor_y(0) + BIG_ROW * 0.5
 	draw_rect(Rect2(0, ground - 2.0, 1152, 4), gold)
-	draw_string(font, Vector2(36, ground - 14.0), "PORȚILE  ->", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, gold)
+	draw_string(font, Vector2(36, ground - 14.0), "GATES  ->", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, gold)
 	draw_rect(Rect2(left - 12, floor_y(0) - 22.0, 12, 44), Color(gold, 0.7))
 	# subsolurile -1 ... -50
 	var cleared_depth := absi(mini(_from, 0)) if _to < _from else 50
@@ -192,7 +192,7 @@ func _draw() -> void:
 		elif d % 10 == 1:
 			draw_string(font, Vector2(left + 110, y0 + 16), String(GameState.ZONES[z]["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(txt_col, 0.9))
 		if f == GameState.DEEPEST_FLOOR:
-			draw_string(font, Vector2(right + 16, y0 + 16), "<- COMOARA REGALĂ", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, gold)
+			draw_string(font, Vector2(right + 16, y0 + 16), "<- ROYAL TREASURE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, gold)
 	# puțul (shaft) pe care coboară Cavalerul
 	draw_line(Vector2(ICON_X, floor_y(0)), Vector2(ICON_X, floor_y(GameState.DEEPEST_FLOOR)), Color(mag, 0.35), 2.0)
 	# halou auriu sub iconița Cavalerului

@@ -28,13 +28,13 @@ const CHARGE_TIME := 0.5
 const MAX_MINIONS := 3
 
 const TYPE_DATA := {
-	Type.GHOST: {"name": "Fantomă", "look": "ghost", "tint": Color(0.75, 1.0, 0.95, 0.85),
+	Type.GHOST: {"name": "Ghost", "look": "ghost", "tint": Color(0.75, 1.0, 0.95, 0.85),
 		"cooldown": Vector2(1.8, 3.0), "move": 35.0, "float": true},
 	Type.SPIRIT: {"name": "Spirit", "look": "spirit", "tint": Color(0.85, 0.7, 1.0, 0.9),
 		"cooldown": Vector2(2.0, 3.2), "move": 45.0, "float": true},
-	Type.SKELETON_ARCHER: {"name": "Schelet Arcaș", "look": "skeleton", "tint": Color(1, 1, 1, 1),
+	Type.SKELETON_ARCHER: {"name": "Skeleton Archer", "look": "skeleton", "tint": Color(1, 1, 1, 1),
 		"cooldown": Vector2(1.6, 2.6), "move": 55.0, "float": false},
-	Type.PHANTOM_KNIGHT: {"name": "Cavaler Fantomă", "look": "phantom_knight", "tint": Color(0.55, 0.75, 1.0, 0.8),
+	Type.PHANTOM_KNIGHT: {"name": "Phantom Knight", "look": "phantom_knight", "tint": Color(0.55, 0.75, 1.0, 0.8),
 		"cooldown": Vector2(1.5, 2.5), "move": 50.0, "float": true},
 }
 

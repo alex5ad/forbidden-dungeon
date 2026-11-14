@@ -13,51 +13,51 @@ const MAX_QUEUE := 3
 
 ## Sfaturi generale, prin rotație pe etajele obișnuite.
 const GENERAL_TIPS: Array[String] = [
-	"Scutul (L / Click) întoarce proiectilul spre CURSOR. Țintește înainte să parezi!",
-	"Parează în ultima clipă: primele 0.05 secunde dau un PERFECT, mai rapid și care străpunge tot.",
-	"Proiectilele întoarse ricoșează o dată din pereți. Folosește stâlpii pentru lovituri din unghi!",
-	"Dacă ridici scutul degeaba, îți trebuie o jumătate de secundă până îl ridici din nou.",
-	"Cu o singură inimă, un PERFECT îți dă o viață înapoi. Asta înseamnă BOUNCE BACK!",
-	"Înainte să atace, umbrele se înroșesc și trag o linie spre tine. Fii atent la semn.",
-	"Sabia (P) lovește doar de aproape. Scutul lovește de la distanță: alege bine.",
-	"Saltul (Space) te face invulnerabil cât ești în aer. Bun pentru sulițele roșii!",
-	"Un PERFECT trece prin toți dușmanii aliniați. Așază-te ca să prinzi mai mulți deodată.",
-	"După fiecare boss învins îți recapeți toată viața. Nu te grăbi.",
-	"Stai în mișcare: proiectilele țintesc locul în care erai când au fost trase.",
+	"Shield (L / Click) reflects projectiles toward the CURSOR. Aim before you parry!",
+	"Parry at the last moment: the first 0.05s gives a PERFECT, faster and piercing.",
+	"Reflected projectiles bounce once off walls. Use pillars for angled shots!",
+	"If you raise your shield in vain, it takes half a second before you can raise it again.",
+	"With one heart left, a PERFECT gives you a life back. That's BOUNCE BACK!",
+	"Before attacking, shadows turn red and draw a line toward you. Watch for the tell.",
+	"The sword (P) only hits up close. The shield can parry from a distance: choose wisely.",
+	"Jump (Space) makes you invulnerable while airborne. Great against red spears!",
+	"A PERFECT pierces every enemy in a line. Position yourself to hit several at once.",
+	"After each boss, you regain all your health. Don't rush.",
+	"Keep moving: projectiles aim for where you were when they were fired.",
 ]
 
 ## Primul etaj din fiecare capitol: cine sunt dușmanii și cum îi învingi.
 const CHAPTER_TIPS: Array[String] = [
-	"Capitolul 1, Cripta Fantomelor. Fantomele trag câte un glob lent. Exersează aici momentul scutului!",
-	"Capitolul 2, Catacombele Spiritelor. Spiritele trag câte trei odată: parează-l pe cel care vine spre tine.",
-	"Capitolul 3, Osuarul Scheleților. Arcașii fug de tine și trag repede. Urmărește linia de ochire!",
-	"Capitolul 4, Cazarma Coruptă. Soldații mei, Cavalerii Fantomă: sabia albastră se parează, sulița ROȘIE nu!",
-	"Capitolul 5, Abisul Cărții. Toate umbrele deodată. Ține-te în mișcare și alege-ți țintele.",
+	"Chapter 1, Ghost Crypt. Ghosts fire single slow orbs. Practice your shield timing here!",
+	"Chapter 2, Spirit Catacombs. Spirits fire three at once: parry the one coming at you.",
+	"Chapter 3, Skeleton Ossuary. Archers flee and shoot fast. Watch the aim line!",
+	"Chapter 4, Corrupted Barracks. My soldiers, the Phantom Knights: parry the blue sword, but not the RED SPEAR!",
+	"Chapter 5, Book Abyss. All shadows at once. Keep moving and choose your targets.",
 ]
 
 ## Etajele de boss: puterea specială a fiecăruia.
 const BOSS_TIPS: Array[String] = [
-	"Marele Duh dispare și reapare în alt loc. Când cheamă fantome, globurile lor sunt muniție pentru tine!",
-	"Oracolul trage evantaie triple. Parează proiectilul din mijloc și trimite-l înapoi spre el.",
-	"Comandantul de Os aruncă ploi de săgeți. Parează prima săgeată, apoi ieși din evantai.",
-	"Garda mea Regală! Când linia e roșie, se aruncă spre tine: sari (Space) peste șarjă!",
-	"Avatarul Cărții are toate puterile umbrelor: teleport, șarjă, sulițe. Respiră și parează doar ce poți.",
+	"The Great Spirit vanishes and reappears elsewhere. When it summons ghosts, their orbs are ammo for you!",
+	"The Oracle fires triple spreads. Parry the middle projectile and send it back!",
+	"The Bone Commander unleashes arrow barrages. Parry the first arrow, then dodge the spread.",
+	"My Royal Guard! When the line turns red, they charge at you: jump (Space) over the charge!",
+	"The Book Avatar has every shadow power: teleport, charge, and spears. Breathe, and parry what you can.",
 ]
 
 const EVENT_TIPS := {
-	"first_floor": "Sunt eu, Regele! Spiritul meu te va însoți prin catacombe și îți voi da sfaturi.",
-	"first_hit": "Au! Ridică scutul chiar înainte ca lovitura să te atingă, nu după.",
-	"low_hp": "O singură inimă! Un PERFECT acum îți dă o viață înapoi!",
-	"too_early": "Prea devreme! Așteaptă până când proiectilul e aproape de tine.",
-	"first_perfect": "Asta e! Lovitura perfectă e mai rapidă și străpunge tot.",
-	"bounce_back": "Ai revenit din pragul morții! Așa se face: BOUNCE BACK!",
-	"first_spear": "Atenție! Sulița ROȘIE nu se poate para. Ferește-te sau sari peste ea!",
-	"first_clear": "Camera e liberă. Calcă pe Puțul Abisal ca să cobori.",
-	"boss_phase": "S-a înfuriat! Atacurile vin mai des acum.",
-	"summon": "A chemat ajutoare! Loviturile lor sunt muniție pentru scutul tău.",
-	"charge": "Șarjă! Sari (Space) sau fugi într-o parte!",
-	"blink": "A dispărut! Caută fumul magenta: acolo reapare.",
-	"boss_down": "L-ai învins! Viața ți-a revenit. Mergem mai departe.",
+	"first_floor": "It's me, the King! My spirit will accompany you through the catacombs and offer advice.",
+	"first_hit": "Ouch! Raise your shield just before the hit lands, not after.",
+	"low_hp": "One heart left! A PERFECT now gives you a life back!",
+	"too_early": "Too early! Wait until the projectile is close.",
+	"first_perfect": "That's it! A perfect parry is faster and pierces through everything.",
+	"bounce_back": "You came back from death's door! That's how you BOUNCE BACK!",
+	"first_spear": "Watch out! The RED SPEAR cannot be parried. Dodge or jump over it!",
+	"first_clear": "The room is clear. Step onto the Abyssal Pit to descend.",
+	"boss_phase": "It's enraged! Attacks are coming faster now.",
+	"summon": "It called for help! Their projectiles are ammo for your shield.",
+	"charge": "Charge! Jump (Space) or run to the side!",
+	"blink": "It vanished! Look for the magenta smoke: that's where it reappears.",
+	"boss_down": "You defeated it! Your health is restored. Let's move on.",
 }
 
 var target: Node2D
@@ -219,7 +219,7 @@ func _build_bubble() -> void:
 	vb.add_theme_constant_override("separation", 2)
 	_bubble.add_child(vb)
 	var who := Label.new()
-	who.text = "Regele (fantoma)"
+		who.text = "The King (Ghost)"
 	who.add_theme_font_size_override("font_size", 13)
 	who.add_theme_color_override("font_color", COL_GHOST)
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE

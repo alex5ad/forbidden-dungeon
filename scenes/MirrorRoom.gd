@@ -9,7 +9,7 @@ const KING_GHOST_TINT := Color(0.55, 0.95, 1.0, 0.85)
 const COL_NARRATOR := Color("#ff7bff")
 const COL_KING_GHOST := Color("#7ff3ff")
 
-const KING_SPEECH := "Ascultă-mă, %s! Căutându-mi comoara uitată, am eliberat blestemul Cărții Întunericului și am fost închis în această oglindă. Te pot călăuzi prin catacombe! Coboară până la Subsolul -50, înfruntă armata umbrelor întorcându-le propriile atacuri și găsește Comoara Regală!"
+const KING_SPEECH := "Listen to me, %s! While searching for my lost treasure, I unleashed the curse of the Book of Darkness and was trapped in this mirror. I can guide you through the catacombs! Descend to Dungeon Floor -50, face the shadow army by turning their own attacks against them, and find the Royal Treasure!"
 
 @onready var camera: ShakeCamera = $Camera2D
 @onready var mirror: MagicMirror = $Mirror
@@ -57,7 +57,7 @@ func _process(delta: float) -> void:
 func _first_visit_sequence() -> void:
 	knight.position = Vector2(576, 720)
 	await knight.walk_to(Vector2(576, 420), 120.0).finished
-	await dialog.say("", "Cavalerul pășește pe podeaua în carouri a Parterului. În fața lui se înalță Oglinda Blestemată.", COL_NARRATOR)
+	await dialog.say("", "The Knight steps onto the checkered floor of the Ground Floor. Before him rises the Cursed Mirror.", COL_NARRATOR)
 	# silueta spectrală a Regelui apare în oglindă
 	GameState.play_sfx("magic", false, -6.0)
 	mirror_sparkles.emitting = true
@@ -66,18 +66,18 @@ func _first_visit_sequence() -> void:
 	t.tween_property(king_ghost, "modulate:a", 0.05, 0.15)
 	t.tween_property(king_ghost, "modulate:a", 1.0, 0.8)
 	await t.finished
-	await dialog.say("", "În adâncul sticlei sparte se conturează silueta spectrală a unui rege bătrân.", COL_NARRATOR)
-	await dialog.say("Regele (din oglindă)", "Un suflet viu... după atâta vreme! Spune-mi, Cavalere, cum te numești?", COL_KING_GHOST)
+	await dialog.say("", "In the depths of the shattered glass, the spectral silhouette of an old king takes shape.", COL_NARRATOR)
+	await dialog.say("The King (in the mirror)", "A living soul... after so long! Tell me, Knight, what is your name?", COL_KING_GHOST)
 	dialog.close()
 	var entered_name: String = await _ask_name()
 	GameState.player_name = entered_name
-	await dialog.say("Regele (din oglindă)", KING_SPEECH % GameState.player_name, COL_KING_GHOST)
-	await dialog.say("Regele (din oglindă)", "Atacă umbrele cu P, ridică scutul cu L chiar când te lovește un proiectil ca să-l întorci spre cursor și folosește Space ca să sari peste lovituri!", COL_KING_GHOST)
+	await dialog.say("The King (in the mirror)", KING_SPEECH % GameState.player_name, COL_KING_GHOST)
+	await dialog.say("The King (in the mirror)", "Attack shadows with P, raise your shield with L just before a projectile hits to reflect it toward the cursor, and press Space to leap over attacks!", COL_KING_GHOST)
 	# se deschide trapa către Subsolul -1
-	trapdoor.caption = "SUBSOLUL -1"
+	trapdoor.caption = "DUNGEON FLOOR -1"
 	await trapdoor.open_door(0.9).finished
 	GameState.shake(5.0)
-	await dialog.say("Regele (din oglindă)", "Trapa către Subsolul -1 s-a deschis. Du-te, %s! Regatul meu depinde de tine." % GameState.player_name, COL_KING_GHOST)
+	await dialog.say("The King (in the mirror)", "The trapdoor to Dungeon Floor -1 is open. Go, %s! My kingdom depends on you." % GameState.player_name, COL_KING_GHOST)
 	dialog.close()
 	await knight.walk_to(trapdoor.position, 120.0).finished
 	await _fall_into(trapdoor.position)
@@ -96,7 +96,7 @@ func _fall_into(pos: Vector2) -> void:
 
 func _ask_name() -> String:
 	_name_panel.visible = true
-	_name_edit.text = GameState.player_name if GameState.player_name != "Cavaler" else ""
+	_name_edit.text = GameState.player_name if GameState.player_name != "Knight" else ""
 	_name_edit.grab_focus()
 	var result: String = await name_confirmed
 	_name_panel.visible = false
@@ -108,7 +108,7 @@ func _confirm_name(_text: String = "") -> void:
 		return
 	var n := _name_edit.text.strip_edges()
 	if n.is_empty():
-		n = "Cavaler"
+		n = "Knight"
 	GameState.play_sfx("parry", false)
 	name_confirmed.emit(n.substr(0, 16))
 
@@ -134,18 +134,18 @@ func _revival_sequence() -> void:
 	await knight.walk_to(Vector2(560, 360), 110.0).finished
 	trapdoor.visible = false
 	knight.face(1.0)
-	await dialog.say("Regele (din oglindă)", "%s! Te-ai întors din adâncuri... Simt strălucirea comorii mele asupra ta!" % pname, COL_KING_GHOST)
-	await dialog.say(pname, "Am găsit Comoara Regală, Majestate. Aur, Coroana... și Poțiunea Vieții Veșnice.", Color.WHITE)
-	await dialog.say(pname, "Mi-ar putea dărui tinerețe veșnică. Dar locul ei nu este la mine. Este a ta.", Color.WHITE)
-	await dialog.say("", "Cavalerul toarnă Poțiunea în Oglinda Spartă...", COL_NARRATOR)
+	await dialog.say("The King (in the mirror)", "%s! You've returned from the depths... I can feel the glow of my treasure upon you!" % pname, COL_KING_GHOST)
+	await dialog.say(pname, "I found the Royal Treasure, Your Majesty. Gold, the Crown... and the Potion of Eternal Life.", Color.WHITE)
+	await dialog.say(pname, "It could grant me eternal youth. But it doesn't belong to me. It's yours.", Color.WHITE)
+	await dialog.say("", "The Knight pours the Potion into the Shattered Mirror...", COL_NARRATOR)
 	dialog.close()
 	await _pour_potion()
 	await _mirror_blaze()
-	await dialog.say("Regele", "Carne... sânge... Sunt VIU! Și tânăr din nou! Blestemul oglinzii s-a frânt!", GameState.COL_GOLD)
-	await dialog.say("", "Cavalerul îi oferă Regelui Coroana Regală.", COL_NARRATOR)
+	await dialog.say("The King", "Flesh... blood... I am ALIVE! Young again! The mirror's curse is broken!", GameState.COL_GOLD)
+	await dialog.say("", "The Knight gives the King the Royal Crown.", COL_NARRATOR)
 	dialog.close()
 	await _offer_crown()
-	await dialog.say("Regele", "Ai coborât în abis pentru mine, %s. Haide! Urcăm împreună spre Sala Tronului, la etajul +2!" % pname, GameState.COL_GOLD)
+	await dialog.say("The King", "You descended into the abyss for me, %s. Come! Let's ascend together to the Throne Room on Floor +2!" % pname, GameState.COL_GOLD)
 	dialog.close()
 	await _walk_upstairs()
 	GameState.travel_to(GameState.TOP_FLOOR)
@@ -243,7 +243,7 @@ func _build_name_panel() -> void:
 	vb.add_theme_constant_override("separation", 10)
 	_name_panel.add_child(vb)
 	var title := Label.new()
-	title.text = "Cum te numești, Cavalere?"
+	title.text = "What is your name, Knight?"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", GameState.COL_GOLD)
@@ -252,7 +252,7 @@ func _build_name_panel() -> void:
 	hb.add_theme_constant_override("separation", 10)
 	vb.add_child(hb)
 	_name_edit = LineEdit.new()
-	_name_edit.placeholder_text = "Numele tău..."
+	_name_edit.placeholder_text = "Your name..."
 	_name_edit.max_length = 16
 	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_edit.custom_minimum_size = Vector2(0, 42)
@@ -260,7 +260,7 @@ func _build_name_panel() -> void:
 	_name_edit.text_submitted.connect(_confirm_name)
 	hb.add_child(_name_edit)
 	var btn := Button.new()
-	btn.text = "Confirmă"
+	btn.text = "Confirm"
 	btn.custom_minimum_size = Vector2(120, 42)
 	btn.add_theme_font_size_override("font_size", 18)
 	btn.pressed.connect(_confirm_name)

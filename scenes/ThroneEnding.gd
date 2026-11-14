@@ -82,8 +82,8 @@ func _sequence() -> void:
 	var k := king.walk_to(Vector2(600, 380), 110.0)
 	knight.walk_to(Vector2(536, 400), 110.0)
 	await k.finished
-	await dialog.say("Regele", "Sala Tronului... Odată plină de viață. Acum bântuită de propriul meu popor, prefăcut în umbre.", GameState.COL_GOLD)
-	await dialog.say("Regele", "Să punem capăt blestemului, %s." % pname, GameState.COL_GOLD)
+	await dialog.say("The King", "The Throne Room... Once full of life. Now haunted by my own people, turned into shadows.", GameState.COL_GOLD)
+	await dialog.say("The King", "Let's put an end to the curse, %s." % pname, GameState.COL_GOLD)
 	dialog.close()
 	# Regele urcă la tron și își pune Coroana pe cap
 	await king.walk_to(THRONE_POS + Vector2(0, -14), 90.0).finished
@@ -96,15 +96,15 @@ func _sequence() -> void:
 	GameState.play_sfx("heal", false)
 	GameState.shake(6.0)
 	FX.burst(self, king.global_position + Vector2(0, -34), GameState.COL_GOLD, 40, 240.0, 0.8, 4.0)
-	await dialog.say("", "Regele își așază Coroana pe cap și se așază pe Tronul Regal.", COL_NARRATOR)
+	await dialog.say("", "The King places the Crown on his head and sits upon the Royal Throne.", COL_NARRATOR)
 	# vârtejul de lumină
 	await _vortex_sequence()
 	# transformarea finală
 	await _transformation()
 	await knight.walk_to(Vector2(650, 260), 100.0).finished
 	knight.face(-1.0)
-	await dialog.say("Regele", "Poporul meu trăiește din nou! %s, ai întors întunericul împotriva lui însuși." % pname, GameState.COL_GOLD)
-	await dialog.say("Regele", "De azi înainte, te numesc GENERALUL ARMATEI REGALE!", GameState.COL_GOLD)
+	await dialog.say("The King", "My people live again! %s, you turned darkness against itself." % pname, GameState.COL_GOLD)
+	await dialog.say("The King", "From this day forth, I name you GENERAL OF THE ROYAL ARMY!", GameState.COL_GOLD)
 	dialog.close()
 	_show_general_title()
 	await get_tree().create_timer(2.4).timeout
@@ -123,7 +123,7 @@ func _vortex_sequence() -> void:
 	var rumble := create_tween().set_loops(6)
 	rumble.tween_callback(func(): GameState.shake(4.0))
 	rumble.tween_interval(0.35)
-	await dialog.say("", "În acel moment, un vârtej de lumină absoarbe tot întunericul din castel înapoi în Cartea Blestemată din care ieșise!", COL_NARRATOR)
+	await dialog.say("", "A vortex of light sweeps all the darkness from the castle back into the Cursed Book it came from!", COL_NARRATOR)
 	dialog.close()
 	for s in _spirits:
 		FX.burst(self, s.global_position, Color(0.25, 0.0, 0.35), 16, 120.0, 0.5, 4.0)
@@ -177,12 +177,12 @@ func _transformation() -> void:
 			hop.tween_property(s, "position:y", s.position.y, 0.18).set_ease(Tween.EASE_IN)
 		GameState.play_sfx("blip", true, -12.0)
 		await get_tree().create_timer(0.12).timeout
-	await dialog.say("", "Toate fantomele și toți scheleții revin la viață ca foștii locuitori ai cetății! Cavalerii Fantomă își recapătă chipul uman și îngenunchează în fața Regelui și a lui %s." % GameState.player_name, COL_NARRATOR)
+	await dialog.say("", "The ghosts and skeletons return to life as the castle's former inhabitants! The Phantom Knights regain their human forms and kneel before the King and %s." % GameState.player_name, COL_NARRATOR)
 	dialog.close()
 
 
 func _show_general_title() -> void:
-	title_banner.text = "%s\nGENERALUL ARMATEI REGALE" % GameState.player_name.to_upper()
+	title_banner.text = "%s\nGENERAL OF THE ROYAL ARMY" % GameState.player_name.to_upper()
 	title_banner.scale = Vector2(1.5, 1.5)
 	confetti.emitting = true
 	GameState.play_sfx("perfect", false)
@@ -193,7 +193,7 @@ func _show_general_title() -> void:
 
 
 func _show_end_panel() -> void:
-	stats_label.text = "Parry-uri: %d   (Perfecte: %d)\nBounce Back de la 1 HP: %d\nUmbre învinse: %d\nCăderi: %d\nTimp: %s" % [
+	stats_label.text = "Parries: %d   (Perfect: %d)\nBounce Backs at 1 HP: %d\nShadows Defeated: %d\nDeaths: %d\nTime: %s" % [
 		GameState.parries, GameState.perfect_parries, GameState.bounce_backs,
 		GameState.kills, GameState.deaths, GameState.run_time_text()]
 	end_panel.visible = true

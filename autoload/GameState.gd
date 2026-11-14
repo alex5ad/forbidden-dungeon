@@ -36,11 +36,11 @@ const DEEPEST_FLOOR := -50
 const TOP_FLOOR := 2
 ## Cele 5 capitole (câte 10 subsoluri): 9 etaje cu inamicii capitolului + boss-ul la final.
 const ZONES: Array[Dictionary] = [
-	{"name": "Cripta Fantomelor", "enemies": "Fantome", "boss": "Marele Duh al Criptei", "boss_hp": 10},
-	{"name": "Catacombele Spiritelor", "enemies": "Spirite", "boss": "Oracolul Fără Ochi", "boss_hp": 13},
-	{"name": "Osuarul Scheleților", "enemies": "Scheleți Arcași", "boss": "Comandantul de Os", "boss_hp": 16},
-	{"name": "Cazarma Coruptă", "enemies": "Cavaleri Fantomă", "boss": "Garda Regală Căzută", "boss_hp": 20},
-	{"name": "Abisul Cărții", "enemies": "Toate umbrele", "boss": "Avatarul Cărții Întunericului", "boss_hp": 25},
+	{"name": "Ghost Crypt", "enemies": "Ghosts", "boss": "Great Crypt Spirit", "boss_hp": 10},
+	{"name": "Spirit Catacombs", "enemies": "Spirits", "boss": "Eyeless Oracle", "boss_hp": 13},
+	{"name": "Skeleton Ossuary", "enemies": "Skeleton Archers", "boss": "Bone Commander", "boss_hp": 16},
+	{"name": "Corrupted Barracks", "enemies": "Phantom Knights", "boss": "Fallen Royal Guard", "boss_hp": 20},
+	{"name": "Book Abyss", "enemies": "All Shadows", "boss": "Book's Dark Avatar", "boss_hp": 25},
 ]
 
 ## 1 = toate cele 50 de subsoluri pe rând (-1, -2, -3 ... -50).
@@ -48,7 +48,7 @@ const ZONES: Array[Dictionary] = [
 var floor_step: int = 1
 
 # --- Starea poveștii ---------------------------------------------------------
-var player_name: String = "Cavaler"
+var player_name: String = "Knight"
 var current_floor: int = 0
 var target_floor: int = 0
 var max_hp: int = 3
@@ -154,20 +154,20 @@ func floor_difficulty(floor_num: int) -> float:
 
 func floor_short(floor_num: int) -> String:
 	if floor_num > 0:
-		return "ETAJ +%d" % floor_num
+		return "FLOOR +%d" % floor_num
 	if floor_num == 0:
-		return "PARTER 0"
-	return "SUBSOL %d" % floor_num
+		return "GROUND FLOOR 0"
+	return "DUNGEON FLOOR %d" % floor_num
 
 
 func floor_name(floor_num: int) -> String:
 	match floor_num:
 		2:
-			return "Sala Tronului"
+			return "Throne Room"
 		1:
-			return "Galeria Regală"
+			return "Royal Gallery"
 		0:
-			return "Sala Oglinzii"
+			return "Mirror Hall"
 	var z := zone_index(floor_num)
 	if is_boss_floor(floor_num):
 		return "BOSS: %s" % ZONES[z]["boss"]

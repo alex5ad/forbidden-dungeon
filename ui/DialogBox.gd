@@ -122,7 +122,7 @@ func _build() -> void:
 	vb.add_child(_text_label)
 
 	_hint = Label.new()
-	_hint.text = "[ Click / Space ]"
+	_hint.text = "[ Click / Space / Enter ]"
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint.add_theme_font_size_override("font_size", 14)
 	_hint.add_theme_color_override("font_color", Color(GameState.COL_GOLD, 0.8))

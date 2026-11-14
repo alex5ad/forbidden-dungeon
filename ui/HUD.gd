@@ -39,9 +39,9 @@ func set_floor(floor_num: int) -> void:
 	if floor_num < 0:
 		var chapter := GameState.chapter_number(floor_num)
 		if GameState.is_boss_floor(floor_num):
-			_zone_label.text = "Capitolul %d  ·  %s" % [chapter, GameState.floor_name(floor_num)]
+			_zone_label.text = "Chapter %d  ·  %s" % [chapter, GameState.floor_name(floor_num)]
 		else:
-			_zone_label.text = "Capitolul %d  ·  %s  ·  etaj %d/10" % [
+			_zone_label.text = "Chapter %d  ·  %s  ·  floor %d/10" % [
 				chapter, GameState.floor_name(floor_num), GameState.chapter_floor(floor_num)]
 	else:
 		_zone_label.text = GameState.floor_name(floor_num)
@@ -84,8 +84,8 @@ func show_hint(text: String, duration: float = 7.0) -> void:
 
 
 func show_game_over(floor_num: int, tip: String = "") -> void:
-	_game_over_title.text = "AI CĂZUT ÎN %s" % GameState.floor_short(floor_num)
-	_game_over_tip.text = "Sfatul Regelui: %s" % tip if tip != "" else ""
+	_game_over_title.text = "YOU FELL ON %s" % GameState.floor_short(floor_num)
+	_game_over_tip.text = "The King's Tip: %s" % tip if tip != "" else ""
 	_game_over_tip.visible = tip != ""
 	_game_over.visible = true
 	_game_over.modulate.a = 0.0
@@ -223,7 +223,7 @@ func _build() -> void:
 	_game_over_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(_game_over_title)
 	var sub := _label(16, GameState.COL_TEXT)
-	sub.text = "Umbrele râd. Dar un Cavaler se ridică mereu."
+	sub.text = "The shadows laugh. But a Knight always rises."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(sub)
 	_game_over_tip = _label(15, Color("#7ff3ff"))
@@ -232,7 +232,7 @@ func _build() -> void:
 	_game_over_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(_game_over_tip)
 	var btn := Button.new()
-	btn.text = "BOUNCE BACK  (Reîncearcă etajul)  [R]"
+	btn.text = "BOUNCE BACK  (Retry floor)  [R]"
 	btn.add_theme_font_size_override("font_size", 18)
 	btn.custom_minimum_size = Vector2(0, 48)
 	btn.pressed.connect(func(): retry_pressed.emit())

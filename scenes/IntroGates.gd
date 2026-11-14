@@ -8,9 +8,9 @@ const GATE_CENTER := Vector2(576, 534)
 const GROUND_Y := 600.0
 
 const NARRATION: Array[String] = [
-	"Un Cavaler rătăcitor a auzit legenda castelului blestemat...",
-	"Zidurile se surpă. Din ferestrele sparte te privesc ochi fără trup.",
-	"Inima îți bate nebunește. Dar un Cavaler nu se întoarce din drum.",
+	"A wandering Knight has heard the legend of the cursed castle...",
+	"The walls are crumbling. Disembodied eyes watch you from shattered windows.",
+	"Your heart pounds. But a Knight never turns back.",
 ]
 
 @onready var camera: ShakeCamera = $Camera2D
@@ -101,7 +101,7 @@ func _open_gates() -> void:
 	_opening = true
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	click_prompt.visible = false
-	narration.text = "Porțile scârțâie și se deschid..."
+	narration.text = "The gates creak open..."
 	narration.visible_ratio = 1.0
 	knight.set_tremble(0.0)
 	GameState.play_sfx("gate", false, -4.0)
