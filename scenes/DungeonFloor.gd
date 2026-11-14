@@ -46,6 +46,12 @@ func _ready() -> void:
 	if floor_num >= 0:  # rulare directă a scenei din editor (F6)
 		floor_num = -1
 		GameState.current_floor = -1
+	if GameState.is_boss_floor(floor_num):
+		GameState.play_music("boss")
+		if floor_num == GameState.DEEPEST_FLOOR:
+			GameState.play_final_boss_sting()
+	else:
+		GameState.play_music("normal")
 	_rng.seed = absi(floor_num) * 7919 + 17
 	floor_rect.position = ARENA.position
 	floor_rect.size = ARENA.size
@@ -269,6 +275,7 @@ func _on_room_cleared() -> void:
 			(p as Projectile).vanish()
 	var boss_floor := GameState.is_boss_floor(floor_num)
 	if boss_floor:
+		GameState.play_music("postfight")
 		GameState.restore_full_hp()
 		GameState.play_sfx("heal", false)
 		hud.show_banner("BOSS DEFEATED!", GameState.COL_MAGENTA, 1.4)

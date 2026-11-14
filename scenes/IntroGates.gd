@@ -99,6 +99,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _open_gates() -> void:
 	_opening = true
+	GameState.play_music("normal")
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	click_prompt.visible = false
 	narration.text = "The gates creak open..."

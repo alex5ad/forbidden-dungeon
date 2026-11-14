@@ -17,6 +17,12 @@ const SCENE_DUNGEON := "res://scenes/DungeonFloor.tscn"
 const SCENE_THRONE := "res://scenes/ThroneEnding.tscn"
 const SCENE_MENU := "res://scenes/MainMenu.tscn"
 
+# --- Muzică ------------------------------------------------------------------
+const MUSIC_NORMAL_PATH := "res://assets/audio/normal_loop.mp3"
+const MUSIC_BOSS_PATH := "res://assets/audio/boss_loop.mp3"
+const MUSIC_POSTFIGHT_PATH := "res://assets/audio/postfight.mp3"
+const MUSIC_FINAL_STING_PATH := "res://assets/audio/final_boss_sting.mp3"
+
 # --- Paletă (Tomb of the Mask + FNaF 4) -------------------------------------
 const COL_BG := Color("#07050c")
 const COL_MAGENTA := Color("#ff00ff")
@@ -120,6 +126,10 @@ var _hitstop_token := 0
 var _sfx: Dictionary = {}
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _sfx_index := 0
+var _music_player: AudioStreamPlayer
+var _sting_player: AudioStreamPlayer
+var _current_music := ""
+var _final_sting_played := false
 
 
 func _ready() -> void:
@@ -127,8 +137,53 @@ func _ready() -> void:
 	randomize()
 	_build_fade_layer()
 	_build_sfx()
+	_build_music()
 	run_start_msec = Time.get_ticks_msec()
 	load_game()
+
+
+func _build_music() -> void:
+	_music_player = AudioStreamPlayer.new()
+	_music_player.name = "MusicPlayer"
+	_music_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	_music_player.volume_db = -14.0
+	add_child(_music_player)
+	_sting_player = AudioStreamPlayer.new()
+	_sting_player.name = "FinalBossStingPlayer"
+	_sting_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	_sting_player.volume_db = -8.0
+	add_child(_sting_player)
+
+
+func play_music(track: String) -> void:
+	if track == _current_music:
+		return
+	var path := ""
+	match track:
+		"normal": path = MUSIC_NORMAL_PATH
+		"boss": path = MUSIC_BOSS_PATH
+		"postfight": path = MUSIC_POSTFIGHT_PATH
+		_: return
+	var stream := load(path) as AudioStreamMP3
+	if stream == null:
+		push_warning("Could not load music: %s" % path)
+		return
+	stream.loop = track != "postfight"
+	_music_player.stream = stream
+	_music_player.play()
+	_current_music = track
+
+
+func play_final_boss_sting() -> void:
+	if _final_sting_played:
+		return
+	var stream := load(MUSIC_FINAL_STING_PATH) as AudioStreamMP3
+	if stream == null:
+		push_warning("Could not load final boss sting: %s" % MUSIC_FINAL_STING_PATH)
+		return
+	_final_sting_played = true
+	_sting_player.stream = stream
+	_sting_player.play()
 
 
 # =============================================================================
